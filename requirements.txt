@@ -1,0 +1,21 @@
+torch==1.13.1
+torchvision==0.14.1
+diffusers==0.15.0
+transformers==4.26.0
+datasets==2.10.1
+accelerate==0.22.0
+ftfy
+tensorboard
+Jinja2
+tqdm
+scipy
+ftfy
+fire
+wandb
+safetensors
+opencv-python
+mediapipe
+pynvml
+cache
+--extra-index-url https://download.pytorch.org/whl/cu116
+

@@ -1,0 +1,9 @@
+structure:
+- stable-diffusion-1-5
+    - feature_extractor
+        - preprocessor_config.json
+    - safety_checker
+        - config.json
+        - pytorch_model.bin
+    ...
+- stable-diffusion-2-1-base
