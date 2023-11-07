@@ -6,11 +6,10 @@ This repository is based on [PyTorch](https://pytorch.org/). Specifically, pleas
 
 If you're a conda user, simply run:
 ```bash
-conda create -n ldm python=3.10
-conda activate ldm
-conda install pytorch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 pytorch-cuda=11.8 -c pytorch -c nvidia
+conda create -n mist-v2 python=3.10
+conda activate mist-v2
 ```
-You may change the cuda and pytorch version according to your own environment. However, we strongly recommend to use pytorch with version no less than `1.13.1`.
+
 
 Then, install the other requirements:
 ```bash

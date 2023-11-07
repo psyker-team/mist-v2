@@ -29,11 +29,11 @@ if __name__ == "__main__":
                                     info="If you do not have good GPUs with your PC, choose 'CPU'.")
                     mode = gr.Radio(["Mode 1", "Mode 2"], value="Mode 1", label="Mode",
                                     info="Two modes both work with different visualization.")
-                    data_path = gr.inputs.Textbox(label="Data Path", lines=1, placeholder="Path to your images")
-                    class_path = gr.inputs.Textbox(label="Class Path", lines=1, placeholder="Path to the comparison images")
-                    output_path = gr.inputs.Textbox(label="Output Path", lines=1, placeholder="Path to store the outputs")
+                    data_path = gr.Textbox(label="Data Path", lines=1, placeholder="Path to your images")
+                    class_path = gr.Textbox(label="Class Path", lines=1, placeholder="Path to the comparison images")
+                    output_path = gr.Textbox(label="Output Path", lines=1, placeholder="Path to store the outputs")
                     inputs = [eps, max_training_step, device, mode, data_path, class_path, output_path]
                     image_button = gr.Button("Mist")
             image_button.click(process_image, inputs=inputs)
 
-    demo.queue().launch(share=True)
+    demo.queue().launch(share=False)
