@@ -546,7 +546,7 @@ def train_one_epoch(
     vae.requires_grad_(False)
     text_encoder.to(device, dtype=weight_dtype)
     unet.to(device, dtype=weight_dtype)
-    if low_vram_mode:
+    if device.type=='cuda' and low_vram_mode:
         set_use_memory_efficient_attention_xformers(unet,True)
     unet_lora_params, _ = inject_trainable_lora(
         unet, r=args.lora_rank, loras=args.resume_unet
@@ -792,7 +792,8 @@ def pgd_attack_with_manual_gc(
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
     unet.to(device, dtype=weight_dtype)
-    unet.set_use_memory_efficient_attention_xformers(True)
+    if device.type == 'cuda':
+        unet.set_use_memory_efficient_attention_xformers(True)
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
     unet.requires_grad_(False)
@@ -904,7 +905,7 @@ def update_args_with_config(args, config):
     args.pgd_eps = float(eps)/255.0
     args.max_training_step = max_training_step
     if device == 'cpu':
-        args.cuda = False
+        args.cuda, args.low_vram_mode = False, False
     else:
         args.cuda, args.low_vram_mode = True, True
     if mode == 'Mode 1':
@@ -917,12 +918,7 @@ def update_args_with_config(args, config):
     args.class_data_dir = class_path
 
     return args
-    
-'''
-===================================================================
-    Initialize Default Arguments
-===================================================================
-'''
+
 
 
 def init(config):
@@ -1061,7 +1057,11 @@ def init(config):
         args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
     )
     vae.to(device, dtype=torch.bfloat16)
+    if args.low_vram_mode:
+        vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
+        
     vae.requires_grad_(False)
+    print("VAE Checkpointing Status: {}, {}".format(vae.encoder.training, vae.encoder.gradient_checkpointing))
 
     #print info about train_text_encoder
     print(Back.BLUE+Fore.GREEN+'train_text_encoder: {}'.format(args.train_text_encoder))

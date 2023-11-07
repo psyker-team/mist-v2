@@ -547,7 +547,7 @@ def train_one_epoch(
     vae.requires_grad_(False)
     text_encoder.to(device, dtype=weight_dtype)
     unet.to(device, dtype=weight_dtype)
-    if low_vram_mode:
+    if device.type=='cuda' and low_vram_mode:
         set_use_memory_efficient_attention_xformers(unet,True)
     unet_lora_params, _ = inject_trainable_lora(
         unet, r=args.lora_rank, loras=args.resume_unet
@@ -793,7 +793,8 @@ def pgd_attack_with_manual_gc(
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
     unet.to(device, dtype=weight_dtype)
-    unet.set_use_memory_efficient_attention_xformers(True)
+    if device.type == 'cuda':
+        unet.set_use_memory_efficient_attention_xformers(True)
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
     unet.requires_grad_(False)
@@ -890,6 +891,7 @@ def main(args):
     # check computational resources        
     if args.cuda:
         try:
+            pynvml.nvmlInit()
             handle = pynvml.nvmlDeviceGetHandleByIndex(0)
             mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
             mem_free = mem_info.free  / float(1073741824)
@@ -905,11 +907,19 @@ def main(args):
 
     logging_dir = Path(args.output_dir, args.logging_dir)
 
-    accelerator = Accelerator(
-        mixed_precision=args.mixed_precision,
-        log_with=args.report_to,
-        project_dir=logging_dir,
-    )
+    if not args.cuda:
+        accelerator = Accelerator(
+            mixed_precision=args.mixed_precision,
+            log_with=args.report_to,
+            project_dir=logging_dir,
+            cpu=True
+        )
+    else:
+        accelerator = Accelerator(
+            mixed_precision=args.mixed_precision,
+            log_with=args.report_to,
+            project_dir=logging_dir
+        )
 
     device = accelerator.device
     print("Mist will run on {}".format(device.type))
@@ -1011,7 +1021,9 @@ def main(args):
         args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
     )
     vae.to(device, dtype=torch.bfloat16)
+    vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
     vae.requires_grad_(False)
+    print("VAE Checkpointing Status: {}, {}".format(vae.encoder.training, vae.encoder.gradient_checkpointing))
 
     #print info about train_text_encoder
     print(Back.BLUE+Fore.GREEN+'train_text_encoder: {}'.format(args.train_text_encoder))
@@ -1095,7 +1107,7 @@ def main(args):
             print(f"Saved noise at step {i+1} to {save_folder}")
 
     end_time = time.time()
-    running_time = str(datetime.timedelta(seconds = end_time))
+    running_time = str(datetime.timedelta(seconds = end_time - start_time))
     print("Finished! Running time: {}".format(running_time))
 
 

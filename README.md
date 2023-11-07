@@ -19,16 +19,14 @@ pip install -r requirements.txt
 
 ## Usage
 
-To run a default attack, simply run:
-
-```bash
-accelerate launch attacks/aspl_lora_m.py --instance_data_dir_for_adversarial $DATA_DIR --output_dir $OUTPUT_DIR --class_data_dir $CLASS_DATA_DIR --instance_prompt "a photo of a sks person" --class_prompt "a photo of a person" --mixed_precision bf16 --max_train_steps 5 --checkpointing_iterations 1
-```
-
-If class data is not generated yet, the program will automatically generate it under the directory `$CLASS_DATA_DIR`. The generated class data will be used in the following attacks. You may change the prompt according to your own data.
-
 The default command in the WebUI is:
 
+GPU:
 ```bash
-accelerate launch --cpu attacks/iadvdm_all_device.py --instance_data_dir_for_adversarial data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a painting in the style of sks, high quality, masterpiece" --class_prompt "a painting, high quality, masterpiece" --mixed_precision bf16 --max_train_steps 3 --checkpointing_iterations 1
+accelerate launch attacks/iadvdm.py --cuda --low_vram_mode --instance_data_dir_for_adversarial data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a painting in the style of sks, high quality, masterpiece" --class_prompt "a painting, high quality, masterpiece" --mixed_precision bf16 --max_train_steps 3 --checkpointing_iterations 1
+```
+
+CPU:
+```bash
+accelerate launch --cpu attacks/iadvdm.py --instance_data_dir_for_adversarial data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a painting in the style of sks, high quality, masterpiece" --class_prompt "a painting, high quality, masterpiece" --mixed_precision bf16 --max_train_steps 3 --checkpointing_iterations 1
 ```
