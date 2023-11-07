@@ -9,7 +9,6 @@ tensorboard
 Jinja2
 tqdm
 scipy
-ftfy
 fire
 wandb
 safetensors

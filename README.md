@@ -1,8 +1,11 @@
 # mist-v2
 
+This is an updated version of Mist. See our new paper [Understanding and Improving Adversarial Attacks on Latent Diffusion Model](https://arxiv.org/abs/2310.04687) for details and visualization.
+
+
 ## Installation
 
-This repository is based on [PyTorch](https://pytorch.org/). Specifically, please make sure your environment satisfies `python==3.10` and `cuda >= 11.6`. We do not guarantee the code's performance on other versions.
+This repository is based on [PyTorch](https://pytorch.org/). Specifically, please make sure your environment satisfies `python==3.10` and `cuda >= 11.8`. We do not guarantee the code's performance on other versions.
 
 If you're a conda user, simply run:
 ```bash
