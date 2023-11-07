@@ -21,7 +21,13 @@ pip install -r requirements.txt
 
 ## Usage
 
-The default command in the WebUI is:
+To use Mist-v2, directly run:
+
+```bash
+python mist-webui.py
+```
+
+We also detail the default command in the WebUI:
 
 GPU:
 ```bash
