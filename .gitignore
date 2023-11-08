@@ -5,7 +5,8 @@ logs/
 *.safetensors
 *.jpg
 *.png
-!MIST.png
+!data/MIST.png
+!/MIST_logo.png
 *.zip
 __pycache__/
 stable-diffusion/*/

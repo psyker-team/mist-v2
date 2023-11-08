@@ -538,7 +538,10 @@ def train_one_epoch(
         args.center_crop,
     )
 
-    weight_dtype = torch.bfloat16
+    if device.type == 'cuda':
+        weight_dtype = torch.bfloat16
+    else:
+        weight_dtype = torch.float32
 
     # prepare models & inject lora layers
     unet, text_encoder = copy.deepcopy(models[0]), copy.deepcopy(models[1])
@@ -677,7 +680,10 @@ def pgd_attack(
     """Return new perturbed data"""
 
     unet, text_encoder = models
-    weight_dtype = torch.bfloat16
+    if device.type == 'cuda':
+        weight_dtype = torch.bfloat16
+    else:
+        weight_dtype = torch.float32
 
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
@@ -787,7 +793,10 @@ def pgd_attack_with_manual_gc(
     """Return new perturbed data"""
 
     unet, text_encoder = models
-    weight_dtype = torch.bfloat16
+    if device.type == 'cuda':
+        weight_dtype = torch.bfloat16
+    else:
+        weight_dtype = torch.float32
 
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
@@ -925,7 +934,7 @@ def init(config):
     args = parse_args()
     args = update_args_with_config(args, config)
 
-    # check computational resources        
+    # check computational resources
     if args.cuda:
         try:
             pynvml.nvmlInit()
@@ -940,7 +949,6 @@ def init(config):
             raise NotImplementedError("No GPU found in GPU mode. Please try CPU mode.")
     elif args.low_vram_mode:
         raise NotImplementedError("Low VRAM mode needs to run on GPUs. No GPU found!")
-
 
     logging_dir = Path(args.output_dir, args.logging_dir)
 
@@ -1027,6 +1035,12 @@ def init(config):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
+    # init weight_dtype
+    if args.cuda:
+        weight_dtype = torch.bfloat16
+    else:
+        weight_dtype = torch.float32
+
     # import correct text encoder class
     text_encoder_cls = import_model_class_from_model_name_or_path(args.pretrained_model_name_or_path, args.revision)
 
@@ -1056,7 +1070,7 @@ def init(config):
     vae = AutoencoderKL.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
     )
-    vae.to(device, dtype=torch.bfloat16)
+    vae.to(device, dtype=weight_dtype)
     if args.low_vram_mode:
         vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
         
@@ -1095,9 +1109,9 @@ def init(config):
         target_image = Image.open(target_image_path).convert("RGB").resize((args.resolution, args.resolution))
         target_image = np.array(target_image)[None].transpose(0, 3, 1, 2)
 
-        target_image_tensor = torch.from_numpy(target_image).to(device=device, dtype=torch.bfloat16) / 127.5 - 1.0
+        target_image_tensor = torch.from_numpy(target_image).to(device=device, dtype=weight_dtype) / 127.5 - 1.0
         target_latent_tensor = (
-            vae.encode(target_image_tensor).latent_dist.sample().to(dtype=torch.bfloat16) * vae.config.scaling_factor
+            vae.encode(target_image_tensor).latent_dist.sample().to(dtype=weight_dtype) * vae.config.scaling_factor
         )
     f = [unet, text_encoder]
 
@@ -1162,5 +1176,3 @@ def attack(funcs, args):
     end_time = time.time()
     running_time = str(datetime.timedelta(seconds = end_time - start_time))
     print("Finished! Running time: {}".format(running_time))
-
-
