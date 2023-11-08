@@ -25,7 +25,7 @@ if __name__ == "__main__":
                                     info="Larger strength results in stronger but more visible defense.")
                     max_training_step = gr.Slider(1, 20, step=1, value=5, label='Steps',
                                       info="Larger training steps results in stronger defense.")
-                    device = gr.Radio(["CPU", "GPU"], value="CPU", label="Device",
+                    device = gr.Radio(["cpu", "gpu"], value="cpu", label="Device",
                                     info="If you do not have good GPUs with your PC, choose 'CPU'.")
                     mode = gr.Radio(["Mode 1", "Mode 2"], value="Mode 1", label="Mode",
                                     info="Two modes both work with different visualization.")
