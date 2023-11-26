@@ -31,10 +31,10 @@ We also detail the default command in the WebUI:
 
 GPU:
 ```bash
-accelerate launch attacks/iadvdm.py --cuda --low_vram_mode --instance_data_dir_for_adversarial data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a painting in the style of sks, high quality, masterpiece" --class_prompt "a painting, high quality, masterpiece" --mixed_precision bf16 --max_train_steps 3 --checkpointing_iterations 1
+accelerate launch attacks/ita_dev.py --cuda --low_vram_mode --instance_data_dir_for_adversarial data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a photo of a sks person, high quality, masterpiece" --class_prompt "a painting, high quality, masterpiece" --mixed_precision bf16 --max_train_steps 5 --checkpointing_iterations 1
 ```
 
 CPU:
 ```bash
-accelerate launch --cpu attacks/iadvdm.py --instance_data_dir_for_adversarial data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a painting in the style of sks, high quality, masterpiece" --class_prompt "a painting, high quality, masterpiece" --mixed_precision bf16 --max_train_steps 3 --checkpointing_iterations 1
+accelerate launch --cpu attacks/ita.py --instance_data_dir_for_adversarial data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a photo of a sks person, high quality, masterpiece" --class_prompt "a painting, high quality, masterpiece" --mixed_precision bf16 --max_train_steps 3 --checkpointing_iterations 1
 ```

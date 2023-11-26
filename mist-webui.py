@@ -1,13 +1,13 @@
 import numpy as np
 import gradio as gr
-from attacks.iadvdm_webui import init, attack, update_args_with_config
+from attacks.ita_webui import init, attack, update_args_with_config
 import os
 from tqdm import tqdm
 import PIL
 from PIL import Image, ImageOps
 
-def process_image(eps, max_training_step, device, mode, data_path, class_path, output_path):
-    config = (eps, max_training_step, device, mode, data_path, class_path, output_path)
+def process_image(eps, max_training_step, device, mode, data_path, class_path, output_path, model_path):
+    config = (eps, max_training_step, device, mode, data_path, class_path, output_path, model_path)
 
     print("Loading ...")
     funcs, args = init(config=config)
@@ -32,8 +32,21 @@ if __name__ == "__main__":
                     data_path = gr.Textbox(label="Data Path", lines=1, placeholder="Path to your images")
                     class_path = gr.Textbox(label="Class Path", lines=1, placeholder="Path to the comparison images")
                     output_path = gr.Textbox(label="Output Path", lines=1, placeholder="Path to store the outputs")
-                    inputs = [eps, max_training_step, device, mode, data_path, class_path, output_path]
+                    model_path = gr.Textbox(label="Target Model Path", lines=1, placeholder="Path to the target model")
+
+                    with gr.Accordion("Professional Setups", open=False):
+                        max_f_train_steps = gr.Slider(1, 20, step=1, value=1, label='Steps',
+                                      info="Training steps of LoRA")
+                        lora_ranks = gr.Slider(4, 20, step=4, value=4, label='LoRA Ranks',
+                                      info="Ranks of LoRA")
+                        learning_rate = gr.Number(label="The learning rate of LoRA", default=1e-4, float=True)
+                        
+
+
+                    inputs = [eps, max_training_step, device, mode, data_path, class_path, output_path, model_path]
                     image_button = gr.Button("Mist")
+
+                    
             image_button.click(process_image, inputs=inputs)
 
     demo.queue().launch(share=False)

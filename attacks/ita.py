@@ -5,7 +5,7 @@ import itertools
 import logging
 import os
 import sys
-import time, datetime
+import time, datetime, gc
 from pathlib import Path
 from colorama import Fore, Style, init,Back
 '''some system level settings'''
@@ -265,18 +265,7 @@ def parse_args(input_args=None):
         default=1,
         help="Total number of sub-steps to train surogate model.",
     )
-    parser.add_argument(
-        "--max_adv_train_steps",
-        type=int,
-        default=50,
-        help="Total number of sub-steps to train adversarial noise.",
-    )
-    parser.add_argument(
-        "--pre_attack_steps",
-        type=int,
-        default=10,
-        help="Total number of sub-steps to train adversarial noise.",
-    )
+    
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
@@ -327,34 +316,7 @@ def parse_args(input_args=None):
             " flag passed with the `accelerate.launch` command. Use this argument to override the accelerate config."
         ),
     )
-    parser.add_argument(
-        "--low_vram_mode",
-        action="store_true",
-        help="Whether or not to use low vram mode.",
-    )
-    parser.add_argument(
-        "--pgd_alpha",
-        type=float,
-        default=5e-3,
-        help="The step size for pgd.",
-    )
-    parser.add_argument(
-        "--pgd_eps",
-        type=float,
-        default=float(8.0/255.0),
-        help="The noise budget for pgd.",
-    )
-    parser.add_argument(
-        "--fused_weight",
-        type=float,
-        default=1e-5,
-        help="The decay of alpha and eps when applying pre_attack",
-    )
-    parser.add_argument(
-        "--target_image_path",
-        default="data/MIST.png",
-        help="target image for attacking",
-    )
+    
 
     parser.add_argument(
         "--save_steps",
@@ -395,14 +357,7 @@ def parse_args(input_args=None):
             ' "constant", "constant_with_warmup"]'
         ),
     )
-    parser.add_argument(
-        "--mode",
-        "-m",
-        type=str,
-        choices=['lunet','fused'],
-        default='lunet',
-        help="The mode of attack",
-    )
+    
     parser.add_argument(
         "--lr_warmup_steps",
         type=int,
@@ -474,6 +429,56 @@ def parse_args(input_args=None):
         default=True,
         required=False,
         help="Should images be resized to --resolution before training?",
+    )
+
+    # following are the training args of adv attacks
+    parser.add_argument(
+        "--low_vram_mode",
+        action="store_true",
+        help="Whether or not to use low vram mode.",
+    )
+    parser.add_argument(
+        "--pgd_alpha",
+        type=float,
+        default=5e-3,
+        help="The step size for pgd.",
+    )
+    parser.add_argument(
+        "--pgd_eps",
+        type=float,
+        default=float(8.0/255.0),
+        help="The noise budget for pgd.",
+    )
+    parser.add_argument(
+        "--fused_weight",
+        type=float,
+        default=1e-5,
+        help="The decay of alpha and eps when applying pre_attack",
+    )
+    parser.add_argument(
+        "--target_image_path",
+        default="data/MIST.png",
+        help="target image for attacking",
+    )
+    parser.add_argument(
+        "--mode",
+        "-m",
+        type=str,
+        choices=['lunet','fused'],
+        default='lunet',
+        help="The mode of attack",
+    )
+    parser.add_argument(
+        "--max_adv_train_steps",
+        type=int,
+        default=50,
+        help="Total number of sub-steps to train adversarial noise.",
+    )
+    parser.add_argument(
+        "--pre_attack_steps",
+        type=int,
+        default=10,
+        help="Total number of sub-steps to train adversarial noise.",
     )
 
     if input_args is not None:
@@ -650,10 +655,10 @@ def train_one_epoch(
             loss.backward()
             print(f"loss - step {step}, loss: {loss.detach().item()}")
         params_to_clip = (
-                    itertools.chain(unet.parameters(), text_encoder.parameters())
-                    if args.train_text_encoder
-                    else unet.parameters()
-                )
+                itertools.chain(unet.parameters(), text_encoder.parameters())
+                if args.train_text_encoder
+                else unet.parameters()
+            )
         torch.nn.utils.clip_grad_norm_(params_to_clip, 1.0, error_if_nonfinite=True)
         optimizer.step()
         optimizer.zero_grad()
@@ -950,7 +955,8 @@ def main(args):
         cur_class_images = len(list(class_images_dir.iterdir()))
 
         if cur_class_images < args.num_class_images:
-            torch_dtype = torch.float16 if accelerator.device.type == "cuda" else torch.float32
+            torch_dtype = torch.bfloat16 if accelerator.device.type == "cuda" else torch.float32
+            print("torch_dtype: {}".format(torch_dtype))
             if args.mixed_precision == "fp32":
                 torch_dtype = torch.float32
             elif args.mixed_precision == "fp16":
@@ -998,10 +1004,10 @@ def main(args):
         args.pretrained_model_name_or_path,
         subfolder="text_encoder",
         revision=args.revision,
-    ).to(device)
+    )
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="unet", revision=args.revision
-    ).to(device)
+    )
 
     # add by lora
     unet.requires_grad_(False)
@@ -1021,18 +1027,18 @@ def main(args):
         args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
     )
     vae.to(device, dtype=torch.bfloat16)
-    vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
+    # vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
     vae.requires_grad_(False)
-    print("VAE Checkpointing Status: {}, {}".format(vae.encoder.training, vae.encoder.gradient_checkpointing))
+    print("======Device> vae: {}, unet: {}, text_encoder: {}======".format(vae.device, unet.device, text_encoder.device))
 
     #print info about train_text_encoder
-    print(Back.BLUE+Fore.GREEN+'train_text_encoder: {}'.format(args.train_text_encoder))
+    # print(Back.BLUE+Fore.GREEN+'train_text_encoder: {}'.format(args.train_text_encoder))
     if not args.train_text_encoder:
         text_encoder.requires_grad_(False)
-    # print info about low_vram_mode
-    print(Back.BLUE+Fore.GREEN+'low_vram_mode: {}'.format(args.low_vram_mode and args.cuda))
-    #print info about use_8bit_adam
-    print(Back.BLUE+Fore.GREEN+'use_8bit_adam: {}'.format(args.use_8bit_adam))
+    # # print info about low_vram_mode
+    # print(Back.BLUE+Fore.GREEN+'low_vram_mode: {}'.format(args.low_vram_mode and args.cuda))
+    # #print info about use_8bit_adam
+    # print(Back.BLUE+Fore.GREEN+'use_8bit_adam: {}'.format(args.use_8bit_adam))
     # added by lora
     text_encoder.requires_grad_(False)
     # end: added by lora
@@ -1079,6 +1085,11 @@ def main(args):
             device,
             args.mode,
         )
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        print("=======mem after pgd: {}=======".format(mem_info.used / float(1073741824)))
+        del f_sur
+        gc.collect()
         f = train_one_epoch(
             args,
             f,
@@ -1090,11 +1101,18 @@ def main(args):
             args.max_f_train_steps,
             low_vram_mode=args.cuda and args.low_vram_mode
         )
-        
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        print("=======mem after lora: {}======".format(mem_info.used / float(1073741824)))
+        gc.collect()
+
+        for model in f:
+            model.to('cpu')
+
         if i + 1 == args.max_train_steps:
             save_folder = f"{args.output_dir}"
             os.makedirs(save_folder, exist_ok=True)
-            noised_imgs = perturbed_data.detach()
+            noised_imgs = perturbed_data.detach().cpu()
             img_names = [
                 str(instance_path)
                 for instance_path in os.listdir(args.instance_data_dir_for_adversarial)
@@ -1102,10 +1120,11 @@ def main(args):
             for img_pixel, img_name in zip(noised_imgs, img_names):
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
                 Image.fromarray(
-                    (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).cpu().numpy()
+                    (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
                 ).save(save_path)
             print(f"Saved noise at step {i+1} to {save_folder}")
-
+            del noised_imgs
+        gc.collect()
     end_time = time.time()
     running_time = str(datetime.timedelta(seconds = end_time - start_time))
     print("Finished! Running time: {}".format(running_time))

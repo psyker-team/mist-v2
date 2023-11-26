@@ -510,9 +510,11 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
         ]
     )
 
-    images = [image_transforms(Image.open(i).convert("RGB")) for i in list(Path(data_dir).iterdir())]
+    images = [(Image.open(i).convert("RGB")) for i in list(Path(data_dir).iterdir())]
+    sizes = [img.size for img in images]
+    images = [image_transforms(img) for img in images]
     images = torch.stack(images)
-    return images
+    return images, sizes
 
 
 def train_one_epoch(
@@ -1049,10 +1051,10 @@ def init(config):
         args.pretrained_model_name_or_path,
         subfolder="text_encoder",
         revision=args.revision,
-    ).to(device)
+    )
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="unet", revision=args.revision
-    ).to(device)
+    )
 
     # add by lora
     unet.requires_grad_(False)
@@ -1091,7 +1093,7 @@ def init(config):
 
     if args.allow_tf32:
         torch.backends.cuda.matmul.allow_tf32 = True
-    perturbed_data = load_data(
+    perturbed_data, data_sizes = load_data(
         args.instance_data_dir_for_adversarial,
         size=args.resolution,
         center_crop=args.center_crop,
@@ -1116,7 +1118,7 @@ def init(config):
     f = [unet, text_encoder]
 
     funcs = (f, tokenizer, noise_scheduler, vae, original_data,\
-        target_latent_tensor, target_image_tensor, device, perturbed_data, original_data)
+        target_latent_tensor, target_image_tensor, device, perturbed_data, original_data, data_sizes)
     
     return funcs, args
 
@@ -1127,7 +1129,7 @@ def attack(funcs, args):
 
     start_time = time.time()
     f, tokenizer, noise_scheduler, vae, original_data,\
-        target_latent_tensor, target_image_tensor, device, perturbed_data, original_data = funcs
+        target_latent_tensor, target_image_tensor, device, perturbed_data, original_data, data_sizes = funcs
     
     for i in range(args.max_train_steps):        
         f_sur = copy.deepcopy(f)
@@ -1157,6 +1159,9 @@ def attack(funcs, args):
             args.max_f_train_steps,
             low_vram_mode=args.cuda and args.low_vram_mode
         )
+
+        for model in f:
+            model.to('cpu')
         
         if i + 1 == args.max_train_steps:
             save_folder = f"{args.output_dir}"
@@ -1166,11 +1171,12 @@ def attack(funcs, args):
                 str(instance_path)
                 for instance_path in os.listdir(args.instance_data_dir_for_adversarial)
             ]
-            for img_pixel, img_name in zip(noised_imgs, img_names):
+
+            for img_pixel, img_name, size in zip(noised_imgs, img_names, data_sizes):
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
                 Image.fromarray(
                     (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).cpu().numpy()
-                ).save(save_path)
+                ).resize(size).save(save_path)
             print(f"Saved noise at step {i+1} to {save_folder}")
 
     end_time = time.time()
