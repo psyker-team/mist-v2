@@ -953,7 +953,7 @@ def init(config):
             mem_free = mem_info.free  / float(1073741824)
             if mem_free < 12.0 and not args.low_vram_mode:
                 raise NotImplementedError("Your GPU memory is not enough for normal mode. Please try low VRAM mode.")
-            if mem_free < 6.0:
+            if mem_free < 5.5:
                 raise NotImplementedError("Your GPU memory is not enough for running Mist on GPU. Please try CPU mode.")
         except:
             raise NotImplementedError("No GPU found in GPU mode. Please try CPU mode.")
