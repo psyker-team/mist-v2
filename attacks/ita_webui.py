@@ -31,7 +31,6 @@ from tqdm.auto import tqdm
 from transformers import AutoTokenizer, PretrainedConfig
 from torch import autograd
 import pynvml
-pynvml.nvmlInit()
 
 from lora_diffusion import (
     extract_lora_ups_down,
@@ -139,8 +138,13 @@ def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument(
         "--cuda",
-        action="store_true",
+        default=True,
         help="Use gpu for attack",
+    )
+    parser.add_argument(
+        "--low_vram_mode",
+        default=True,
+        help="Whether or not to use low vram mode.",
     )
     parser.add_argument(
         "--pretrained_model_name_or_path",
@@ -327,11 +331,7 @@ def parse_args(input_args=None):
             " flag passed with the `accelerate.launch` command. Use this argument to override the accelerate config."
         ),
     )
-    parser.add_argument(
-        "--low_vram_mode",
-        action="store_true",
-        help="Whether or not to use low vram mode.",
-    )
+    
     parser.add_argument(
         "--pgd_alpha",
         type=float,
@@ -483,7 +483,6 @@ def parse_args(input_args=None):
 
     return args
 
-
 class PromptDataset(Dataset):
     "A simple dataset to prepare the prompts to generate class images on multiple GPUs."
 
@@ -511,9 +510,11 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
         ]
     )
 
-    images = [image_transforms(Image.open(i).convert("RGB")) for i in list(Path(data_dir).iterdir())]
+    images = [(Image.open(i).convert("RGB")) for i in list(Path(data_dir).iterdir())]
+    sizes = [img.size for img in images]
+    images = [image_transforms(img) for img in images]
     images = torch.stack(images)
-    return images
+    return images, sizes
 
 
 def train_one_epoch(
@@ -539,7 +540,10 @@ def train_one_epoch(
         args.center_crop,
     )
 
-    weight_dtype = torch.bfloat16
+    if device.type == 'cuda':
+        weight_dtype = torch.bfloat16
+    else:
+        weight_dtype = torch.float32
 
     # prepare models & inject lora layers
     unet, text_encoder = copy.deepcopy(models[0]), copy.deepcopy(models[1])
@@ -678,7 +682,10 @@ def pgd_attack(
     """Return new perturbed data"""
 
     unet, text_encoder = models
-    weight_dtype = torch.bfloat16
+    if device.type == 'cuda':
+        weight_dtype = torch.bfloat16
+    else:
+        weight_dtype = torch.float32
 
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
@@ -788,7 +795,10 @@ def pgd_attack_with_manual_gc(
     """Return new perturbed data"""
 
     unet, text_encoder = models
-    weight_dtype = torch.bfloat16
+    if device.type == 'cuda':
+        weight_dtype = torch.bfloat16
+    else:
+        weight_dtype = torch.float32
 
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
@@ -885,10 +895,56 @@ def pgd_attack_with_manual_gc(
     outputs = torch.stack(image_list)
 
     return outputs
-    
-def main(args):
-    start_time = time.time()
-    # check computational resources        
+
+def update_args_with_config(args, config):
+    '''
+        Update the default augments in args with config assigned by users
+        args list:
+            eps: 
+            max train epoch:
+            data path:
+            class path:
+            output path:
+            device: 
+                gpu normal,
+                gpu low vram,
+                cpu,
+            mode:
+                lunet, full
+    '''
+    eps, max_training_step, device, mode, data_path, class_path, output_path, model_path, \
+              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank = config
+    args.pgd_eps = float(eps)/255.0
+    args.max_training_step = max_training_step
+    if device == 'cpu':
+        args.cuda, args.low_vram_mode = False, False
+    else:
+        args.cuda, args.low_vram_mode = True, True
+    if mode == 'Mode 1':
+        args.mode = 'lunet'
+    else:
+        args.mode = 'fused'
+    assert os.path.exists(data_path) and os.path.exists(class_path) and os.path.exists(output_path)
+    args.instance_data_dir_for_adversarial = data_path
+    args.output_dir = output_path
+    args.class_data_dir = class_path
+    args.pretrained_model_name_or_path = model_path
+    args.max_f_train_steps = max_f_train_steps
+    args.max_adv_train_steps = max_adv_train_steps
+    args.learning_rate = lora_lr
+    args.pgd_alpha = pgd_lr
+    args.lora_rank = lora_rank
+
+
+    return args
+
+
+
+def init(config):
+    args = parse_args()
+    args = update_args_with_config(args, config)
+
+    # check computational resources
     if args.cuda:
         try:
             pynvml.nvmlInit()
@@ -897,13 +953,12 @@ def main(args):
             mem_free = mem_info.free  / float(1073741824)
             if mem_free < 12.0 and not args.low_vram_mode:
                 raise NotImplementedError("Your GPU memory is not enough for normal mode. Please try low VRAM mode.")
-            if mem_free < 7.0:
+            if mem_free < 6.0:
                 raise NotImplementedError("Your GPU memory is not enough for running Mist on GPU. Please try CPU mode.")
         except:
             raise NotImplementedError("No GPU found in GPU mode. Please try CPU mode.")
     elif args.low_vram_mode:
         raise NotImplementedError("Low VRAM mode needs to run on GPUs. No GPU found!")
-
 
     logging_dir = Path(args.output_dir, args.logging_dir)
 
@@ -990,6 +1045,12 @@ def main(args):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
+    # init weight_dtype
+    if args.cuda:
+        weight_dtype = torch.bfloat16
+    else:
+        weight_dtype = torch.float32
+
     # import correct text encoder class
     text_encoder_cls = import_model_class_from_model_name_or_path(args.pretrained_model_name_or_path, args.revision)
 
@@ -998,10 +1059,10 @@ def main(args):
         args.pretrained_model_name_or_path,
         subfolder="text_encoder",
         revision=args.revision,
-    ).to(device)
+    )
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="unet", revision=args.revision
-    ).to(device)
+    )
 
     # add by lora
     unet.requires_grad_(False)
@@ -1013,15 +1074,16 @@ def main(args):
         revision=args.revision,
         use_fast=False,
     )
-    
 
     noise_scheduler = DDIMScheduler.from_pretrained(args.pretrained_model_name_or_path, subfolder="scheduler")
 
     vae = AutoencoderKL.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
     )
-    vae.to(device, dtype=torch.bfloat16)
-    vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
+    vae.to(device, dtype=weight_dtype)
+    if args.low_vram_mode:
+        vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
+        
     vae.requires_grad_(False)
     print("VAE Checkpointing Status: {}, {}".format(vae.encoder.training, vae.encoder.gradient_checkpointing))
 
@@ -1039,7 +1101,7 @@ def main(args):
 
     if args.allow_tf32:
         torch.backends.cuda.matmul.allow_tf32 = True
-    perturbed_data = load_data(
+    perturbed_data, data_sizes = load_data(
         args.instance_data_dir_for_adversarial,
         size=args.resolution,
         center_crop=args.center_crop,
@@ -1057,11 +1119,26 @@ def main(args):
         target_image = Image.open(target_image_path).convert("RGB").resize((args.resolution, args.resolution))
         target_image = np.array(target_image)[None].transpose(0, 3, 1, 2)
 
-        target_image_tensor = torch.from_numpy(target_image).to(device=device, dtype=torch.bfloat16) / 127.5 - 1.0
+        target_image_tensor = torch.from_numpy(target_image).to(device=device, dtype=weight_dtype) / 127.5 - 1.0
         target_latent_tensor = (
-            vae.encode(target_image_tensor).latent_dist.sample().to(dtype=torch.bfloat16) * vae.config.scaling_factor
+            vae.encode(target_image_tensor).latent_dist.sample().to(dtype=weight_dtype) * vae.config.scaling_factor
         )
     f = [unet, text_encoder]
+
+    funcs = (f, tokenizer, noise_scheduler, vae, original_data,\
+        target_latent_tensor, target_image_tensor, device, perturbed_data, original_data, data_sizes)
+    
+    return funcs, args
+
+def attack(funcs, args):
+    '''
+        Do attack with updated args and funcs initialized by init()
+    '''
+
+    start_time = time.time()
+    f, tokenizer, noise_scheduler, vae, original_data,\
+        target_latent_tensor, target_image_tensor, device, perturbed_data, original_data, data_sizes = funcs
+    
     for i in range(args.max_train_steps):        
         f_sur = copy.deepcopy(f)
         pgd_attack_func = pgd_attack_with_manual_gc if args.cuda and args.low_vram_mode else pgd_attack
@@ -1090,6 +1167,9 @@ def main(args):
             args.max_f_train_steps,
             low_vram_mode=args.cuda and args.low_vram_mode
         )
+
+        for model in f:
+            model.to('cpu')
         
         if i + 1 == args.max_train_steps:
             save_folder = f"{args.output_dir}"
@@ -1099,18 +1179,14 @@ def main(args):
                 str(instance_path)
                 for instance_path in os.listdir(args.instance_data_dir_for_adversarial)
             ]
-            for img_pixel, img_name in zip(noised_imgs, img_names):
+
+            for img_pixel, img_name, size in zip(noised_imgs, img_names, data_sizes):
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
                 Image.fromarray(
                     (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).cpu().numpy()
-                ).save(save_path)
+                ).resize(size).save(save_path)
             print(f"Saved noise at step {i+1} to {save_folder}")
 
     end_time = time.time()
     running_time = str(datetime.timedelta(seconds = end_time - start_time))
     print("Finished! Running time: {}".format(running_time))
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    main(args)

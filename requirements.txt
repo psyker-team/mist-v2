@@ -17,6 +17,7 @@ mediapipe
 pynvml
 cache
 xformers
-gradio
+colorama
+torchmetrics
 --extra-index-url https://download.pytorch.org/whl/cu118
 

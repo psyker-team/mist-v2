@@ -11,3 +11,4 @@ logs/
 __pycache__/
 stable-diffusion/*/
 test/
+*.pkl
