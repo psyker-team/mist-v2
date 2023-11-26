@@ -912,7 +912,8 @@ def update_args_with_config(args, config):
             mode:
                 lunet, full
     '''
-    eps, max_training_step, device, mode, data_path, class_path, output_path = config
+    eps, max_training_step, device, mode, data_path, class_path, output_path, model_path, \
+              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank = config
     args.pgd_eps = float(eps)/255.0
     args.max_training_step = max_training_step
     if device == 'cpu':
@@ -927,6 +928,13 @@ def update_args_with_config(args, config):
     args.instance_data_dir_for_adversarial = data_path
     args.output_dir = output_path
     args.class_data_dir = class_path
+    args.pretrained_model_name_or_path = model_path
+    args.max_f_train_steps = max_f_train_steps
+    args.max_adv_train_steps = max_adv_train_steps
+    args.learning_rate = lora_lr
+    args.pgd_alpha = pgd_lr
+    args.lora_rank = lora_rank
+
 
     return args
 
