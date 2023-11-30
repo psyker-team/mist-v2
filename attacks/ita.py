@@ -51,6 +51,7 @@ class DreamBoothDatasetFromTensor(Dataset):
         instance_images_tensor,
         instance_prompt,
         tokenizer,
+        with_prior_preservation=True,
         class_data_root=None,
         class_prompt=None,
         size=512,
@@ -64,6 +65,7 @@ class DreamBoothDatasetFromTensor(Dataset):
         self.num_instance_images = len(self.instance_images_tensor)
         self.instance_prompt = instance_prompt
         self._length = self.num_instance_images
+        self.with_prior_preservation = with_prior_preservation
 
         if class_data_root is not None:
             self.class_data_root = Path(class_data_root)
@@ -100,7 +102,7 @@ class DreamBoothDatasetFromTensor(Dataset):
             return_tensors="pt",
         ).input_ids
 
-        if self.class_data_root:
+        if self.class_data_root and self.with_prior_preservation:
             class_image = Image.open(self.class_images_path[index % self.num_class_images])
             if not class_image.mode == "RGB":
                 class_image = class_image.convert("RGB")
@@ -540,6 +542,7 @@ def train_one_epoch(
         data_tensor,
         args.instance_prompt,
         tokenizer,
+        args.with_prior_preservation,
         args.class_data_dir,
         args.class_prompt,
         args.resolution,

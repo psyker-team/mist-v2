@@ -7,9 +7,9 @@ import PIL
 from PIL import Image, ImageOps
 
 def process_image(eps, max_training_step, device, mode, data_path, class_path, output_path, model_path,\
-                  max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank):
+                  max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank, with_prior_preservation):
     config = (eps, max_training_step, device, mode, data_path, class_path, output_path, model_path, \
-              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank)
+              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank, with_prior_preservation)
 
     print("Loading ...")
     funcs, args = init(config=config)
@@ -37,6 +37,7 @@ if __name__ == "__main__":
                     model_path = gr.Textbox(label="Target Model Path", lines=1, placeholder="Path to the target model")
 
                     with gr.Accordion("Professional Setups", open=False):
+                        with_prior_preservation = gr.Checkbox(label="Class Data Training")
                         max_f_train_steps = gr.Slider(1, 20, step=1, value=1, label='Steps',
                                       info="Training steps of LoRA")
                         max_adv_train_steps = gr.Slider(0, 200, step=10, value=50, label='Steps',
@@ -46,10 +47,9 @@ if __name__ == "__main__":
                         lora_rank = gr.Slider(4, 20, step=4, value=4, label='LoRA Ranks',
                                       info="Ranks of LoRA")
                         
-
-
+                        
                     inputs = [eps, max_training_step, device, mode, data_path, class_path, output_path, model_path, \
-                              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank]
+                              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank, with_prior_preservation]
                     image_button = gr.Button("Mist")
 
                     

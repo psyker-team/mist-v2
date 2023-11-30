@@ -4,7 +4,7 @@ import hashlib
 import itertools
 import logging
 import os
-import sys
+import sys, gc
 import time, datetime
 from pathlib import Path
 from colorama import Fore, Style, init,Back
@@ -50,6 +50,7 @@ class DreamBoothDatasetFromTensor(Dataset):
         instance_images_tensor,
         instance_prompt,
         tokenizer,
+        with_prior_preservation=True,
         class_data_root=None,
         class_prompt=None,
         size=512,
@@ -63,6 +64,7 @@ class DreamBoothDatasetFromTensor(Dataset):
         self.num_instance_images = len(self.instance_images_tensor)
         self.instance_prompt = instance_prompt
         self._length = self.num_instance_images
+        self.with_prior_preservation = with_prior_preservation
 
         if class_data_root is not None:
             self.class_data_root = Path(class_data_root)
@@ -76,8 +78,9 @@ class DreamBoothDatasetFromTensor(Dataset):
 
         self.image_transforms = transforms.Compose(
             [
-                transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
-                transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+                # transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
+                # transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+                transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5], [0.5]),
             ]
@@ -98,7 +101,7 @@ class DreamBoothDatasetFromTensor(Dataset):
             return_tensors="pt",
         ).input_ids
 
-        if self.class_data_root:
+        if self.class_data_root and self.with_prior_preservation:
             class_image = Image.open(self.class_images_path[index % self.num_class_images])
             if not class_image.mode == "RGB":
                 class_image = class_image.convert("RGB")
@@ -179,7 +182,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--class_data_dir",
         type=str,
-        default="data/artwork-test",
+        default=None,
         required=False,
         help="A folder containing the training data of class images.",
     )
@@ -193,7 +196,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--class_prompt",
         type=str,
-        default="a photo of person",
+        default=None,
         help="The prompt to specify images in the same class as provided instance images.",
     )
     parser.add_argument(
@@ -210,7 +213,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--num_class_images",
         type=int,
-        default=200,
+        default=100,
         help=(
             "Minimal class images for prior preservation loss. If there are not enough images already present in"
             " class_data_dir, additional images will be sampled with class_prompt."
@@ -503,8 +506,9 @@ class PromptDataset(Dataset):
 def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
     image_transforms = transforms.Compose(
         [
-            transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
-            transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+            transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
+            # transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
+            # transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),
         ]
@@ -534,6 +538,7 @@ def train_one_epoch(
         data_tensor,
         args.instance_prompt,
         tokenizer,
+        args.with_prior_preservation,
         args.class_data_dir,
         args.class_prompt,
         args.resolution,
@@ -665,6 +670,8 @@ def train_one_epoch(
     return [unet, text_encoder]
 
 
+
+
 def pgd_attack(
     args,
     models,
@@ -674,120 +681,6 @@ def pgd_attack(
     data_tensor: torch.Tensor,
     original_images: torch.Tensor,
     target_tensor: torch.Tensor,
-    target_images: torch.Tensor,
-    num_steps: int,
-    device: Accelerator.device,
-    mode: str = 'fused',
-):
-    """Return new perturbed data"""
-
-    unet, text_encoder = models
-    if device.type == 'cuda':
-        weight_dtype = torch.bfloat16
-    else:
-        weight_dtype = torch.float32
-
-    vae.to(device, dtype=weight_dtype)
-    text_encoder.to(device, dtype=weight_dtype)
-    unet.to(device, dtype=weight_dtype)
-
-    vae.requires_grad_(False)
-    text_encoder.requires_grad_(False)
-    unet.requires_grad_(False)
-    target_images = target_images.to(device, dtype=weight_dtype).detach().clone()
-    data_tensor = data_tensor.detach().clone()
-    num_image = len(data_tensor)
-    image_list = []
-    tbar = tqdm(range(num_image))
-    tbar.set_description("PGD attack")
-    for id in range(num_image):
-        tbar.update(1)
-        perturbed_image = data_tensor[id, :].unsqueeze(0)
-        perturbed_image.requires_grad = True
-        original_image = original_images[id, :].unsqueeze(0)
-        input_ids = tokenizer(
-            args.instance_prompt,
-            truncation=True,
-            padding="max_length",
-            max_length=tokenizer.model_max_length,
-            return_tensors="pt",
-        ).input_ids
-        input_ids = input_ids.to(device)
-        for step in range(num_steps):
-            perturbed_image.requires_grad = True
-            latents = vae.encode(perturbed_image.to(device, dtype=weight_dtype)).latent_dist.sample()
-            latents = latents * vae.config.scaling_factor
-
-            # Sample noise that we'll add to the latents
-            noise = torch.randn_like(latents)
-            bsz = latents.shape[0]
-            # Sample a random timestep for each image
-            timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
-            timesteps = timesteps.long()
-            
-            # Add noise to the latents according to the noise magnitude at each timestep
-            # (this is the forward diffusion process)
-            noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
-
-            # Get the text embedding for conditioning
-            encoder_hidden_states = text_encoder(input_ids)[0]
-
-            # Predict the noise residual
-            model_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
-
-            # Get the target for loss depending on the prediction type
-            if noise_scheduler.config.prediction_type == "epsilon":
-                target = noise
-            elif noise_scheduler.config.prediction_type == "v_prediction":
-                target = noise_scheduler.get_velocity(latents, noise, timesteps)
-            else:
-                raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
-
-            unet.zero_grad()
-            text_encoder.zero_grad()
-            loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
-
-            # target-shift loss
-            if target_tensor is not None:
-                loss = - F.mse_loss(model_pred, target_tensor)
-                # fused mode
-                if mode == 'fused':
-                    latent_attack = LatentAttack()
-                    loss = loss - 1e2 * latent_attack(latents, target_tensor=target_tensor)
-            loss = loss / args.gradient_accumulation_steps
-            loss.backward()
-            alpha = args.pgd_alpha
-            eps = args.pgd_eps
-            if step % args.gradient_accumulation_steps == args.gradient_accumulation_steps - 1:
-                adv_images = perturbed_image + alpha * perturbed_image.grad.sign()
-                eta = torch.clamp(adv_images - original_image, min=-eps, max=+eps)
-                perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
-                perturbed_image.requires_grad = True
-            #print(f"PGD loss - step {step}, loss: {loss.detach().item()}")
-
-        image_list.append(perturbed_image.detach().clone().squeeze(0))
-    outputs = torch.stack(image_list)
-
-    '''
-    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-    print("mem after pgd: {}".format(mem_info.used / float(1073741824)))
-    '''
-
-    return outputs
-
-
-
-def pgd_attack_with_manual_gc(
-    args,
-    models,
-    tokenizer,
-    noise_scheduler:DDIMScheduler,
-    vae:AutoencoderKL,
-    data_tensor: torch.Tensor,
-    original_images: torch.Tensor,
-    target_tensor: torch.Tensor,
-    target_images: torch.Tensor,
     num_steps: int,
     device: Accelerator.device,
     mode: str = 'fused',
@@ -808,8 +701,6 @@ def pgd_attack_with_manual_gc(
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
     unet.requires_grad_(False)
-    target_images = target_images.to(device, dtype=weight_dtype).detach().clone()
-    data_tensor = data_tensor.detach().clone()
     num_image = len(data_tensor)
     image_list = []
     tbar = tqdm(range(num_image))
@@ -913,7 +804,7 @@ def update_args_with_config(args, config):
                 lunet, full
     '''
     eps, max_training_step, device, mode, data_path, class_path, output_path, model_path, \
-              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank = config
+              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank, with_prior_preservation = config
     args.pgd_eps = float(eps)/255.0
     args.max_training_step = max_training_step
     if device == 'cpu':
@@ -934,6 +825,7 @@ def update_args_with_config(args, config):
     args.learning_rate = lora_lr
     args.pgd_alpha = pgd_lr
     args.lora_rank = lora_rank
+    args.with_prior_preservation = with_prior_preservation
 
 
     return args
@@ -1085,7 +977,7 @@ def init(config):
         vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
         
     vae.requires_grad_(False)
-    print("VAE Checkpointing Status: {}, {}".format(vae.encoder.training, vae.encoder.gradient_checkpointing))
+    # print("VAE Checkpointing Status: {}, {}".format(vae.encoder.training, vae.encoder.gradient_checkpointing))
 
     #print info about train_text_encoder
     print(Back.BLUE+Fore.GREEN+'train_text_encoder: {}'.format(args.train_text_encoder))
@@ -1122,11 +1014,14 @@ def init(config):
         target_image_tensor = torch.from_numpy(target_image).to(device=device, dtype=weight_dtype) / 127.5 - 1.0
         target_latent_tensor = (
             vae.encode(target_image_tensor).latent_dist.sample().to(dtype=weight_dtype) * vae.config.scaling_factor
-        )
+        ).detach().clone()
+        target_image_tensor.to('cpu')
+        del target_image_tensor
+        gc.collect()
     f = [unet, text_encoder]
 
     funcs = (f, tokenizer, noise_scheduler, vae, original_data,\
-        target_latent_tensor, target_image_tensor, device, perturbed_data, original_data, data_sizes)
+        target_latent_tensor, device, perturbed_data, original_data, data_sizes)
     
     return funcs, args
 
@@ -1137,12 +1032,12 @@ def attack(funcs, args):
 
     start_time = time.time()
     f, tokenizer, noise_scheduler, vae, original_data,\
-        target_latent_tensor, target_image_tensor, device, perturbed_data, original_data, data_sizes = funcs
+        target_latent_tensor, device, perturbed_data, original_data, data_sizes = funcs
     
     for i in range(args.max_train_steps):        
         f_sur = copy.deepcopy(f)
-        pgd_attack_func = pgd_attack_with_manual_gc if args.cuda and args.low_vram_mode else pgd_attack
-        perturbed_data = pgd_attack_func(
+        perturbed_data = perturbed_data.detach().clone()
+        perturbed_data = pgd_attack(
             args,
             f_sur,
             tokenizer,
@@ -1151,7 +1046,6 @@ def attack(funcs, args):
             perturbed_data,
             original_data,
             target_latent_tensor,
-            target_image_tensor,
             args.max_adv_train_steps,
             device,
             args.mode,
