@@ -1082,7 +1082,7 @@ def main(args):
     for i in range(args.max_train_steps):        
         f_sur = copy.deepcopy(f)
         pgd_attack_func = pgd_attack_with_manual_gc if args.cuda and args.low_vram_mode else pgd_attack
-        perturbed_data = perturbed_data.detach.clone()
+        perturbed_data = perturbed_data.detach().clone()
         perturbed_data = pgd_attack_func(
             args,
             f_sur,
