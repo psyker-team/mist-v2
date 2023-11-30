@@ -207,7 +207,6 @@ def parse_args(input_args=None):
     )
     parser.add_argument(
         "--with_prior_preservation",
-        default=True,
         action="store_true",
         help="Flag to add prior preservation loss.",
     )

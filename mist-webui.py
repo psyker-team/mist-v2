@@ -23,9 +23,9 @@ if __name__ == "__main__":
             gr.Image("MIST_logo.png", show_label=False)
             with gr.Row():
                 with gr.Column():
-                    eps = gr.Slider(0, 32, step=2, value=8, label='Strength',
+                    eps = gr.Slider(0, 32, step=2, value=12, label='Strength',
                                     info="Larger strength results in stronger but more visible defense.")
-                    max_training_step = gr.Slider(1, 20, step=1, value=5, label='Steps',
+                    max_training_step = gr.Slider(1, 50, step=1, value=20, label='Steps',
                                       info="Larger training steps results in stronger defense.")
                     device = gr.Radio(["cpu", "gpu"], value="cpu", label="Device",
                                     info="If you do not have good GPUs with your PC, choose 'CPU'.")
