@@ -1180,12 +1180,19 @@ def attack(funcs, args):
                 for instance_path in os.listdir(args.instance_data_dir_for_adversarial)
             ]
 
-            for img_pixel, img_name, size in zip(noised_imgs, img_names, data_sizes):
+            # for img_pixel, img_name, size in zip(noised_imgs, img_names, data_sizes):
+            #     save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
+            #     Image.fromarray(
+            #         (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).cpu().numpy()
+            #     ).resize(size).save(save_path)
+            # print(f"Saved noise at step {i+1} to {save_folder}")
+            for img_pixel, img_name in zip(noised_imgs, img_names):
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
                 Image.fromarray(
-                    (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).cpu().numpy()
-                ).resize(size).save(save_path)
+                    (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
+                ).save(save_path)
             print(f"Saved noise at step {i+1} to {save_folder}")
+            del noised_imgs
 
     end_time = time.time()
     running_time = str(datetime.timedelta(seconds = end_time - start_time))

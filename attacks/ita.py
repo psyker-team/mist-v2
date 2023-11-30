@@ -77,8 +77,9 @@ class DreamBoothDatasetFromTensor(Dataset):
 
         self.image_transforms = transforms.Compose(
             [
-                transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
-                transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+                # transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
+                # transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+                transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5], [0.5]),
             ]
@@ -175,7 +176,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--class_data_dir",
         type=str,
-        default="data/artwork-test",
+        default=None,
         required=False,
         help="A folder containing the training data of class images.",
     )
@@ -189,13 +190,12 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--class_prompt",
         type=str,
-        default="a photo of person",
+        default=None,
         help="The prompt to specify images in the same class as provided instance images.",
     )
     parser.add_argument(
         "--with_prior_preservation",
-        type=bool,
-        default=True,
+        action="store_true",
         help="Flag to add prior preservation loss.",
     )
     parser.add_argument(
@@ -510,8 +510,9 @@ class PromptDataset(Dataset):
 def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
     image_transforms = transforms.Compose(
         [
-            transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
-            transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+            # transforms.Resize((size), interpolation=transforms.InterpolationMode.BILINEAR),
+            # transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+            transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),
         ]
@@ -619,11 +620,20 @@ def train_one_epoch(
         text_encoder.train()
 
         step_data = train_dataset[step % len(train_dataset)]
-        pixel_values = torch.stack([step_data["instance_images"], step_data["class_images"]]).to(
-            device, dtype=weight_dtype
-        )
-        #print("pixel_values shape: {}".format(pixel_values.shape))
-        input_ids = torch.cat([step_data["instance_prompt_ids"], step_data["class_prompt_ids"]], dim=0).to(device)
+        # print("keys: {}".format(step_data.keys()))
+        if "class_images" in step_data.keys():
+            pixel_values = torch.stack([step_data["instance_images"], step_data["class_images"]]).to(
+                device, dtype=weight_dtype
+            )
+        else:
+            pixel_values = torch.stack([step_data["instance_images"],]).to(
+                device, dtype=weight_dtype
+            )
+        # print("pixel_values shape: {}".format(pixel_values.shape))
+        if "class_images" in step_data.keys():
+            input_ids = torch.cat([step_data["instance_prompt_ids"], step_data["class_prompt_ids"]], dim=0).to(device)
+        else:
+            input_ids = torch.cat([step_data["instance_prompt_ids"],], dim=0).to(device)
         for k in range(pixel_values.shape[0]):
             #calculate loss of instance and class seperately
             pixel_value = pixel_values[k, :].unsqueeze(0)
@@ -676,7 +686,6 @@ def pgd_attack(
     data_tensor: torch.Tensor,
     original_images: torch.Tensor,
     target_tensor: torch.Tensor,
-    target_images: torch.Tensor,
     num_steps: int,
     device: Accelerator.device,
     mode: str = 'fused',
@@ -693,8 +702,6 @@ def pgd_attack(
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
     unet.requires_grad_(False)
-    target_images = target_images.to(device, dtype=weight_dtype).detach().clone()
-    data_tensor = data_tensor.detach().clone()
     num_image = len(data_tensor)
     image_list = []
     tbar = tqdm(range(num_image))
@@ -786,7 +793,6 @@ def pgd_attack_with_manual_gc(
     data_tensor: torch.Tensor,
     original_images: torch.Tensor,
     target_tensor: torch.Tensor,
-    target_images: torch.Tensor,
     num_steps: int,
     device: Accelerator.device,
     mode: str = 'fused',
@@ -804,8 +810,6 @@ def pgd_attack_with_manual_gc(
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
     unet.requires_grad_(False)
-    target_images = target_images.to(device, dtype=weight_dtype).detach().clone()
-    data_tensor = data_tensor.detach().clone()
     num_image = len(data_tensor)
     image_list = []
     tbar = tqdm(range(num_image))
@@ -1067,11 +1071,15 @@ def main(args):
         target_image_tensor = torch.from_numpy(target_image).to(device=device, dtype=torch.bfloat16) / 127.5 - 1.0
         target_latent_tensor = (
             vae.encode(target_image_tensor).latent_dist.sample().to(dtype=torch.bfloat16) * vae.config.scaling_factor
-        )
+        ).detach().clone()
+        target_image_tensor = target_image_tensor.to('cpu')
+        del target_image_tensor
+        gc.collect()
     f = [unet, text_encoder]
     for i in range(args.max_train_steps):        
         f_sur = copy.deepcopy(f)
         pgd_attack_func = pgd_attack_with_manual_gc if args.cuda and args.low_vram_mode else pgd_attack
+        perturbed_data = perturbed_data.detach.clone()
         perturbed_data = pgd_attack_func(
             args,
             f_sur,
@@ -1081,16 +1089,15 @@ def main(args):
             perturbed_data,
             original_data,
             target_latent_tensor,
-            target_image_tensor,
             args.max_adv_train_steps,
             device,
             args.mode,
         )
+        del f_sur
+        gc.collect()
         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
         mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
         print("=======mem after pgd: {}=======".format(mem_info.used / float(1073741824)))
-        del f_sur
-        gc.collect()
         f = train_one_epoch(
             args,
             f,
@@ -1102,10 +1109,11 @@ def main(args):
             args.max_f_train_steps,
             low_vram_mode=args.cuda and args.low_vram_mode
         )
+        gc.collect()
         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
         mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
         print("=======mem after lora: {}======".format(mem_info.used / float(1073741824)))
-        gc.collect()
+        
 
         for model in f:
             model.to('cpu')

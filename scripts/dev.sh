@@ -2,11 +2,9 @@ accelerate launch attacks/ita.py \
  --cuda --low_vram_mode \
  --instance_data_dir_for_adversarial data/training/painting \
  --output_dir output/mist/sd1-5/painting \
- --class_data_dir data/class \
- --instance_prompt "a painting of a sks person, high quality, masterpiece" \
- --class_prompt "a painting of a person, high quality, masterpiece" \
+ --instance_prompt "a painting in the style of sks, high quality, masterpiece" \
  --mixed_precision bf16 \
  --max_train_steps 5 \
  --checkpointing_iterations 1 \
  --pgd_eps 0.05 \
- --max_f_train_steps 20
+ --max_f_train_steps 20 \
