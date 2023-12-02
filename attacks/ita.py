@@ -34,7 +34,6 @@ import pynvml
 pynvml.nvmlInit()
 
 from lora_diffusion import (
-    extract_lora_ups_down,
     inject_trainable_lora,
 )
 from lora_diffusion.xformers_utils import set_use_memory_efficient_attention_xformers
@@ -79,9 +78,9 @@ class DreamBoothDatasetFromTensor(Dataset):
 
         self.image_transforms = transforms.Compose(
             [
-                # transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
-                # transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
-                transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
+                transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
+                transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+                # transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5], [0.5]),
             ]
@@ -508,22 +507,27 @@ class PromptDataset(Dataset):
         example["index"] = index
         return example
 
-
 def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
     image_transforms = transforms.Compose(
         [
-            # transforms.Resize((size), interpolation=transforms.InterpolationMode.BILINEAR),
-            # transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
             transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
+            # transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
+            # transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
             transforms.ToTensor(),
             transforms.Normalize([0.5], [0.5]),
         ]
     )
 
-    images = [image_transforms(Image.open(i).convert("RGB")) for i in list(Path(data_dir).iterdir())]
-    images = torch.stack(images)
-    return images
+    images = []
+    for filename in os.listdir(data_dir):
+        if filename.endswith(".png") or filename.endswith(".jpg"):
+            file_path = os.path.join(data_dir, filename)
+            images.append(Image.open(file_path).convert("RGB"))
 
+    sizes = [img.size for img in images]
+    images = [image_transforms(img) for img in images]
+    images = torch.stack(images)
+    return images, sizes
 
 def train_one_epoch(
     args,
@@ -568,14 +572,6 @@ def train_one_epoch(
             target_replace_module=["CLIPAttention"],
             r=args.lora_rank,
         )
-        for _up, _down in extract_lora_ups_down(
-            text_encoder, target_replace_module=["CLIPAttention"]
-        ):
-            print("Before training: text encoder First Layer lora up", _up.weight.data)
-            print(
-                "Before training: text encoder First Layer lora down", _down.weight.data
-            )
-            break
     
     # build the optimizer
     if args.use_8bit_adam:
@@ -743,19 +739,10 @@ def pgd_attack(
 
             # Predict the noise residual
             model_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
-
-            # Get the target for loss depending on the prediction type
-            if noise_scheduler.config.prediction_type == "epsilon":
-                target = noise
-            elif noise_scheduler.config.prediction_type == "v_prediction":
-                target = noise_scheduler.get_velocity(latents, noise, timesteps)
-            else:
-                raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
-
             unet.zero_grad()
             text_encoder.zero_grad()
-            loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 
+            loss = None
             # target-shift loss
             if target_tensor is not None:
                 loss = - F.mse_loss(model_pred, target_tensor)
@@ -857,19 +844,10 @@ def pgd_attack_with_manual_gc(
 
             # Predict the noise residual
             model_pred = unet(noisy_latents, timesteps, encoder_hidden_states).sample
-
-            # Get the target for loss depending on the prediction type
-            if noise_scheduler.config.prediction_type == "epsilon":
-                target = noise
-            elif noise_scheduler.config.prediction_type == "v_prediction":
-                target = noise_scheduler.get_velocity(latents, noise, timesteps)
-            else:
-                raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
-
             unet.zero_grad()
             text_encoder.zero_grad()
-            loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 
+            loss = None
             # target-shift loss
             if target_tensor is not None:
                 loss = - F.mse_loss(model_pred, target_tensor)
@@ -1053,7 +1031,7 @@ def main(args):
 
     if args.allow_tf32:
         torch.backends.cuda.matmul.allow_tf32 = True
-    perturbed_data = load_data(
+    perturbed_data, data_sizes = load_data(
         args.instance_data_dir_for_adversarial,
         size=args.resolution,
         center_crop=args.center_crop,
@@ -1078,6 +1056,11 @@ def main(args):
         target_image_tensor = target_image_tensor.to('cpu')
         del target_image_tensor
         gc.collect()
+
+
+    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+    print("=======memory initialization: {}=======".format(mem_info.used / float(1073741824)))
     f = [unet, text_encoder]
     for i in range(args.max_train_steps):        
         f_sur = copy.deepcopy(f)
@@ -1124,17 +1107,18 @@ def main(args):
         if i + 1 == args.max_train_steps:
             save_folder = f"{args.output_dir}"
             os.makedirs(save_folder, exist_ok=True)
+            img_names = []
             noised_imgs = perturbed_data.detach().cpu()
-            img_names = [
-                str(instance_path)
-                for instance_path in os.listdir(args.instance_data_dir_for_adversarial)
-            ]
-            for img_pixel, img_name in zip(noised_imgs, img_names):
+            for filename in os.listdir(args.instance_data_dir):
+                if filename.endswith(".png") or filename.endswith(".jpg"):
+                    img_names.append(str(filename))
+            for img_pixel, img_name, img_size in zip(noised_imgs, img_names, data_sizes):
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
                 Image.fromarray(
                     (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
-                ).save(save_path)
-            print(f"Saved noise at step {i+1} to {save_folder}")
+                ).resize(img_size).save(save_path)
+                print(f"==Saved misted image to {save_path}, size: {img_size}==")
+            # print(f"Saved noise at step {i+1} to {save_folder}")
             del noised_imgs
         gc.collect()
     end_time = time.time()

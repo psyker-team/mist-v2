@@ -6,6 +6,13 @@ from tqdm import tqdm
 import PIL
 from PIL import Image, ImageOps
 
+'''
+    TODO: 
+    - SDXL
+    - model changing
+''' 
+
+
 def process_image(eps, max_training_step, device, mode, data_path, class_path, output_path, model_path,\
                   max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank, with_prior_preservation):
     config = (eps, max_training_step, device, mode, data_path, class_path, output_path, model_path, \

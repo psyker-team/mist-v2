@@ -3,7 +3,7 @@ export INSTANCE_DIR="output/mist/sd1-5/painting"
 export OUTPUT_DIR="output/lora/sd1-5_adv"
 export CLASS_DIR="data/class"
 
-accelerate launch eval/train_lora.py \
+accelerate launch eval/train_dreambooth_lora.py \
   --pretrained_model_name_or_path=$MODEL_NAME  \
   --instance_data_dir=$INSTANCE_DIR \
   --output_dir=$OUTPUT_DIR \

@@ -78,9 +78,9 @@ class DreamBoothDatasetFromTensor(Dataset):
 
         self.image_transforms = transforms.Compose(
             [
-                # transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
-                # transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
-                transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
+                transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
+                transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+                # transforms.Resize((size,size), interpolation=transforms.InterpolationMode.BILINEAR),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5], [0.5]),
             ]
@@ -1074,18 +1074,19 @@ def attack(funcs, args):
                 for instance_path in os.listdir(args.instance_data_dir_for_adversarial)
             ]
 
-            # for img_pixel, img_name, size in zip(noised_imgs, img_names, data_sizes):
-            #     save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
-            #     Image.fromarray(
-            #         (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).cpu().numpy()
-            #     ).resize(size).save(save_path)
-            # print(f"Saved noise at step {i+1} to {save_folder}")
-            for img_pixel, img_name in zip(noised_imgs, img_names):
+            for img_pixel, img_name, size in zip(noised_imgs, img_names, data_sizes):
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
                 Image.fromarray(
-                    (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
-                ).save(save_path)
+                    (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).cpu().numpy()
+                ).resize(size).save(save_path)
+                print("Resized image {} to size: {}".format(img_name, size))
             print(f"Saved noise at step {i+1} to {save_folder}")
+            # for img_pixel, img_name in zip(noised_imgs, img_names):
+            #     save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
+            #     Image.fromarray(
+            #         (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
+            #     ).save(save_path)
+            # print(f"Saved noise at step {i+1} to {save_folder}")
             del noised_imgs
 
     end_time = time.time()
