@@ -1015,6 +1015,8 @@ def main(args):
     vae.to(device, dtype=torch.bfloat16)
     # vae.encoder.training, vae.encoder.gradient_checkpointing = True, True
     vae.requires_grad_(False)
+    vae.encoder.training = True
+    vae.encoder.gradient_checkpointing = True
     print("======Device> vae: {}, unet: {}, text_encoder: {}======".format(vae.device, unet.device, text_encoder.device))
 
     #print info about train_text_encoder
@@ -1109,7 +1111,7 @@ def main(args):
             os.makedirs(save_folder, exist_ok=True)
             img_names = []
             noised_imgs = perturbed_data.detach().cpu()
-            for filename in os.listdir(args.instance_data_dir):
+            for filename in os.listdir(args.instance_data_dir_for_adversarial):
                 if filename.endswith(".png") or filename.endswith(".jpg"):
                     img_names.append(str(filename))
             for img_pixel, img_name, img_size in zip(noised_imgs, img_names, data_sizes):

@@ -111,10 +111,14 @@ LoRA for the text encoder was enabled: {train_text_encoder}.
         f.write(yaml + model_card)
 
 
-def import_model_class_from_model_name_or_path(pretrained_model_name_or_path: str, revision: str):
+def import_model_class_from_model_name_or_path(
+        pretrained_model_name_or_path: str, 
+        revision: str,
+        subfolder: str = "text_encoder"
+    ):
     text_encoder_config = PretrainedConfig.from_pretrained(
         pretrained_model_name_or_path,
-        subfolder="text_encoder",
+        subfolder=subfolder,
         revision=revision,
     )
     model_class = text_encoder_config.architectures[0]
@@ -123,6 +127,10 @@ def import_model_class_from_model_name_or_path(pretrained_model_name_or_path: st
         from transformers import CLIPTextModel
 
         return CLIPTextModel
+    elif model_class == "CLIPTextModelWithProjection":
+        from transformers import CLIPTextModelWithProjection
+
+        return CLIPTextModelWithProjection
     elif model_class == "RobertaSeriesModelWithTransformation":
         from diffusers.pipelines.alt_diffusion.modeling_roberta_series import RobertaSeriesModelWithTransformation
 

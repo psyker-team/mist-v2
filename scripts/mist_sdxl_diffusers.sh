@@ -1,9 +1,10 @@
 accelerate launch attacks/ita_diffusers_version.py \
+ --model_type sdxl \
  --cuda \
  --low_vram_mode \
- --pretrained_model_name_or_path stable-diffusion/stable-diffusion-1-5/ \
+ --pretrained_model_name_or_path stable-diffusion/sdxl-base-1.0/ \
  --instance_data_dir data/training/painting \
- --output_dir output/mist/sd1-5/null \
+ --output_dir output/mist/sdxl/null \
  --instance_prompt "a painting of in the style of sks, high quality, masterpiece" \
  --gradient_checkpointing \
  --pre_compute_text_embeddings \

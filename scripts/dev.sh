@@ -7,7 +7,7 @@ accelerate launch attacks/ita.py \
  --max_train_steps 5 \
  --checkpointing_iterations 1 \
  --pgd_eps 0.05 \
- --max_f_train_steps 20
+ --max_f_train_steps 60
 
 
  accelerate launch attacks/ita.py \
