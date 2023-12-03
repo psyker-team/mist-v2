@@ -147,15 +147,16 @@ def tokenize_prompt(tokenizer, prompt, tokenizer_max_length=None):
     else:
         max_length = tokenizer.model_max_length
 
-    text_inputs = tokenizer(
+    tokens = tokenizer(
         prompt,
         truncation=True,
         padding="max_length",
         max_length=max_length,
         return_tensors="pt",
-    )["input_ids"]
+    )
 
-    return text_inputs
+    text_inputs, attn_mask = tokens["input_ids"], tokens["attention_mask"]
+    return text_inputs, attn_mask
 
 
 def encode_prompt_sd(text_encoder, input_ids, attention_mask, text_encoder_use_attention_mask=None):
@@ -524,6 +525,12 @@ def parse_args(input_args=None):
 
     # following are the training args of adv attacks
     parser.add_argument(
+        "--max_f_train_steps",
+        type=int,
+        default=5,
+        help="Total number of training steps to perform.  If provided, overrides num_train_epochs.",
+    )
+    parser.add_argument(
         "--low_vram_mode",
         action="store_true",
         help="Whether or not to use low vram mode.",
@@ -873,7 +880,7 @@ def prepare_optimizer(
         accelerator,
         unet_lora_parameters,
         text_lora_parameters_one,
-        text_lora_parameters_two,
+        text_lora_parameters_two=None,
     ):
     if args.scale_lr:
         args.learning_rate = (
@@ -955,11 +962,11 @@ def prepare_prompts(
 
         def compute_text_embeddings(prompt):
             with torch.no_grad():
-                text_inputs = tokenize_prompt(tokenizer, prompt, tokenizer_max_length=args.tokenizer_max_length)
+                text_inputs, attn_mask = tokenize_prompt(tokenizer, prompt, tokenizer_max_length=args.tokenizer_max_length)
                 prompt_embeds = encode_prompt_sd(
                     text_encoder,
-                    text_inputs.input_ids,
-                    text_inputs.attention_mask,
+                    text_inputs,
+                    attn_mask,
                     text_encoder_use_attention_mask=args.text_encoder_use_attention_mask,
                 )
             return prompt_embeds
@@ -992,8 +999,8 @@ def prepare_prompts(
             )
             del tokenizers, text_encoders
         else:
-            tokens_one = tokenize_prompt(tokenizer_one, args.instance_prompt)
-            tokens_two = tokenize_prompt(tokenizer_two, args.instance_prompt)
+            tokens_one, _ = tokenize_prompt(tokenizer_one, args.instance_prompt)
+            tokens_two, _ = tokenize_prompt(tokenizer_two, args.instance_prompt)
 
     gc.collect()
     torch.cuda.empty_cache()
@@ -1614,7 +1621,7 @@ def main(args):
     print("==Device: vae: {}, unet: {}, data: {}".format(vae.device, unet.device, perturbed_data.device, ))
     
     
-    for i in range(args.max_train_steps):       
+    for i in range(args.max_f_train_steps):       
         f_sur = copy.deepcopy(f)
         perturbed_data = perturbed_data.detach().clone()
         perturbed_data = pgd_attack(
