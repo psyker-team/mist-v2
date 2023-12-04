@@ -13,7 +13,8 @@ def process_image(eps, device, mode, model_type, original_resolution, data_path,
 
     config = (eps, device, mode, model_type, original_resolution, data_path, output_path, model_path, \
               prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank)
-    args = update_args_with_config(config)
+    args = None
+    args = update_args_with_config(args, config)
     main(args)
 
 if __name__ == "__main__":
@@ -45,8 +46,8 @@ if __name__ == "__main__":
                                       info="Training steps of LoRA in one epoch")
                         max_adv_train_steps = gr.Slider(0, 200, step=10, value=50, label='Attacking Steps',
                                       info="Training steps of attacking in one epoch")
-                        lora_lr = gr.Number(label="The learning rate of LoRA", default=0.0005, float=True)
-                        pgd_lr = gr.Number(label="The learning rate of PGD", default=0.005, float=True)
+                        lora_lr = gr.Number(label="The learning rate of LoRA", value=0.0005)
+                        pgd_lr = gr.Number(label="The learning rate of PGD", value=0.005)
                         rank = gr.Slider(4, 20, step=4, value=4, label='LoRA Ranks',
                                       info="Ranks of LoRA")
 

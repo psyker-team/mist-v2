@@ -274,7 +274,6 @@ def parse_args(input_args=None):
         "--revision",
         type=str,
         default=None,
-        required=False,
         help="Revision of pretrained model identifier from huggingface.co/models.",
     )
     parser.add_argument(
@@ -287,7 +286,6 @@ def parse_args(input_args=None):
         "--instance_data_dir",
         type=str,
         default=None,
-        required=True,
         help="A folder containing the training data of instance images.",
     )
 
@@ -295,7 +293,6 @@ def parse_args(input_args=None):
         "--instance_prompt",
         type=str,
         default=None,
-        required=True,
         help="The prompt with identifier specifying the instance",
     )
 
@@ -493,18 +490,15 @@ def parse_args(input_args=None):
         "--tokenizer_max_length",
         type=int,
         default=None,
-        required=False,
         help="The maximum length of the tokenizer. If not set, will default to the tokenizer's max length.",
     )
     parser.add_argument(
         "--text_encoder_use_attention_mask",
         action="store_true",
-        required=False,
         help="Whether to use attention mask for the text encoder",
     )
     parser.add_argument(
         "--class_labels_conditioning",
-        required=False,
         default=None,
         help="The optional `class_label` conditioning to pass to the unet, available values are `timesteps`.",
     )
@@ -1413,7 +1407,7 @@ def main(args):
             mem_free = mem_info.free  / float(1073741824)
             if mem_free < 12.0 and not args.low_vram_mode:
                 raise NotImplementedError("Your GPU memory is not enough for normal mode. Please try low VRAM mode.")
-            if mem_free < 7.0:
+            if mem_free < 5.5:
                 raise NotImplementedError("Your GPU memory is not enough for running Mist on GPU. Please try CPU mode.")
         except:
             raise NotImplementedError("No GPU found in GPU mode. Please try CPU mode.")
@@ -1748,7 +1742,7 @@ def update_args_with_config(args, config):
         args.original_resolution = True
 
     assert os.path.exists(data_path) and os.path.exists(output_path)
-    args.instance_data_dir_for_adversarial = data_path
+    args.instance_data_dir = data_path
     args.output_dir = output_path
     args.pretrained_model_name_or_path = model_path
     args.instance_prompt = prompt
