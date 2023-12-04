@@ -14,4 +14,4 @@ accelerate launch attacks/ita_diffusers_version.py \
  --max_train_steps 50 \
  --num_train_epochs 1 \
  --max_adv_train_steps 50 \
- --pgd_eps 0.05
+ --pgd_eps 0.03

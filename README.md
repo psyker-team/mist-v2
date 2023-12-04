@@ -1,4 +1,4 @@
-# mist-v2
+# Mist-v2
 
 This is an updated version of Mist. See our new paper [Understanding and Improving Adversarial Attacks on Latent Diffusion Model](https://arxiv.org/abs/2310.04687) for details and visualization.
 

@@ -1,10 +1,5 @@
-import numpy as np
 import gradio as gr
-from attacks.ita_webui import init, attack, update_args_with_config
-import os
-from tqdm import tqdm
-import PIL
-from PIL import Image, ImageOps
+from attacks.ita_diffusers_version import update_args_with_config, main
 
 '''
     TODO: 
@@ -13,16 +8,13 @@ from PIL import Image, ImageOps
 ''' 
 
 
-def process_image(eps, max_training_step, device, mode, data_path, class_path, output_path, model_path,\
-                  max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank, with_prior_preservation):
-    config = (eps, max_training_step, device, mode, data_path, class_path, output_path, model_path, \
-              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank, with_prior_preservation)
+def process_image(eps, device, mode, model_type, original_resolution, data_path, output_path, model_path, \
+              prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank):
 
-    print("Loading ...")
-    funcs, args = init(config=config)
-
-    print('Ready to attack...')
-    attack(funcs=funcs, args=args)
+    config = (eps, device, mode, model_type, original_resolution, data_path, output_path, model_path, \
+              prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank)
+    args = update_args_with_config(config)
+    main(args)
 
 if __name__ == "__main__":
     with gr.Blocks() as demo:
@@ -30,33 +22,35 @@ if __name__ == "__main__":
             gr.Image("MIST_logo.png", show_label=False)
             with gr.Row():
                 with gr.Column():
-                    eps = gr.Slider(0, 32, step=2, value=12, label='Strength',
+                    eps = gr.Slider(0, 32, step=1, value=10, label='Strength',
                                     info="Larger strength results in stronger but more visible defense.")
-                    max_training_step = gr.Slider(1, 50, step=1, value=20, label='Steps',
-                                      info="Larger training steps results in stronger defense.")
                     device = gr.Radio(["cpu", "gpu"], value="cpu", label="Device",
-                                    info="If you do not have good GPUs with your PC, choose 'CPU'.")
+                                    info="If you do not have good GPUs on your PC, choose 'CPU'.")
                     mode = gr.Radio(["Mode 1", "Mode 2"], value="Mode 1", label="Mode",
                                     info="Two modes both work with different visualization.")
+                    model_type = gr.Radio(["Stable Diffusion", "SDXL"], value="Stable Diffusion", label="Target Model",
+                                    info="Model used by imaginary copyright infringers")
                     data_path = gr.Textbox(label="Data Path", lines=1, placeholder="Path to your images")
-                    class_path = gr.Textbox(label="Class Path", lines=1, placeholder="Path to the comparison images")
                     output_path = gr.Textbox(label="Output Path", lines=1, placeholder="Path to store the outputs")
                     model_path = gr.Textbox(label="Target Model Path", lines=1, placeholder="Path to the target model")
+                    prompt = gr.Textbox(label="Prompt", lines=1, placeholder="Describe your images")
 
                     with gr.Accordion("Professional Setups", open=False):
-                        with_prior_preservation = gr.Checkbox(label="Class Data Training")
-                        max_f_train_steps = gr.Slider(1, 20, step=1, value=1, label='Steps',
-                                      info="Training steps of LoRA")
-                        max_adv_train_steps = gr.Slider(0, 200, step=10, value=50, label='Steps',
-                                      info="Training steps of LoRA")
-                        lora_lr = gr.Number(label="The learning rate of LoRA", default=1e-4, float=True)
-                        pgd_lr = gr.Number(label="The learning rate of PGD", default=5e-3, float=True)
-                        lora_rank = gr.Slider(4, 20, step=4, value=4, label='LoRA Ranks',
+                        original_resolution = gr.Checkbox(label="Class Data Training")
+                        max_f_train_steps = gr.Slider(1, 20, step=1, value=5, label='Epochs',
+                                      info="Training epochs of Mist-V2")
+                        max_train_steps = gr.Slider(0, 200, step=10, value=50, label='LoRA Steps',
+                                      info="Training steps of LoRA in one epoch")
+                        max_adv_train_steps = gr.Slider(0, 200, step=10, value=50, label='Attacking Steps',
+                                      info="Training steps of attacking in one epoch")
+                        lora_lr = gr.Number(label="The learning rate of LoRA", default=0.0005, float=True)
+                        pgd_lr = gr.Number(label="The learning rate of PGD", default=0.005, float=True)
+                        rank = gr.Slider(4, 20, step=4, value=4, label='LoRA Ranks',
                                       info="Ranks of LoRA")
-                        
-                        
-                    inputs = [eps, max_training_step, device, mode, data_path, class_path, output_path, model_path, \
-                              max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, lora_rank, with_prior_preservation]
+
+                    inputs = [eps, device, mode, model_type, original_resolution, data_path, \
+                              output_path, model_path, prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank]
+                    
                     image_button = gr.Button("Mist")
 
                     

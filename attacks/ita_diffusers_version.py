@@ -339,7 +339,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--max_train_steps",
         type=int,
-        default=2000,
+        default=50,
         help="Total number of training steps to perform.  If provided, overrides num_train_epochs.",
     )
     parser.add_argument(
@@ -462,7 +462,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--mixed_precision",
         type=str,
-        default="fp16",
+        default="bf16",
         choices=["no", "fp16", "bf16"],
         help=(
             "Whether to use mixed precision. Choose between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >="
@@ -513,14 +513,6 @@ def parse_args(input_args=None):
         type=int,
         default=4,
         help=("The dimension of the LoRA update matrices."),
-    )
-
-    parser.add_argument(
-        "--resize",
-        type=bool,
-        default=True,
-        required=False,
-        help="Should images be resized to --resolution before training?",
     )
 
     # following are the training args of adv attacks
@@ -577,6 +569,13 @@ def parse_args(input_args=None):
         type=int,
         default=10,
         help="Total number of sub-steps to train adversarial noise.",
+    )
+
+    # for resizing mode
+    parser.add_argument(
+        "--original_resolution",
+        action="store_true",
+        help="Whether or not to use original resolution resizing.",
     )
 
     if input_args is not None:
@@ -1662,19 +1661,41 @@ def main(args):
             if model != None:
                 model.to('cpu')
 
-        if i + 1 == args.max_train_steps:
+        if i + 1 == args.max_f_train_steps:
             save_folder = f"{args.output_dir}"
             os.makedirs(save_folder, exist_ok=True)
             noised_imgs = perturbed_data.detach().cpu()
+            origin_imgs = original_data.detach().cpu()
             img_names = []
             for filename in os.listdir(args.instance_data_dir):
                 if filename.endswith(".png") or filename.endswith(".jpg"):
                     img_names.append(str(filename))
-            for img_pixel, img_name, img_size in zip(noised_imgs, img_names, data_sizes):
+            for img_pixel, ori_img_pixel, img_name, img_size in zip(noised_imgs, origin_imgs, img_names, data_sizes):
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
-                Image.fromarray(
-                    (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
-                ).resize(img_size).save(save_path)
+                if not args.original_resolution:
+                    Image.fromarray(
+                        (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
+                    ).resize(img_size).save(save_path)
+                else:
+                    ori_img_path = os.path.join(args.instance_data_dir, img_name)
+                    ori_img = np.array(Image.open(ori_img_path).convert("RGB"))
+
+                    ori_img_duzzy = np.array(Image.fromarray(
+                        (ori_img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
+                    ).resize(img_size), dtype=np.int32)
+                    perturbed_img_duzzy = np.array(Image.fromarray(
+                        (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()
+                    ).resize(img_size), dtype=np.int32)
+                    
+                    perturbation = perturbed_img_duzzy - ori_img_duzzy
+                    assert perturbation.shape == ori_img.shape
+
+                    perturbed_img =  (ori_img + perturbation).clip(0, 255).astype(np.uint8)
+                    # print("perturbation: {}, ori: {}, res: {}".format(
+                    #     perturbed_img_duzzy[:2, :2, :], ori_img_duzzy[:2, :2, :], perturbed_img_duzzy[:2, :2, :]))
+                    Image.fromarray(perturbed_img).save(save_path)
+
+
                 print(f"==Saved misted image to {save_path}, size: {img_size}==")
             # print(f"Saved noise at step {i+1} to {save_folder}")
             del noised_imgs
@@ -1683,6 +1704,58 @@ def main(args):
     running_time = str(datetime.timedelta(seconds = end_time - start_time))
     print("Finished! Running time: {}".format(running_time))
 
+
+def update_args_with_config(args, config):
+    '''
+        Update the default augments in args with config assigned by users
+        args list:
+            eps: 
+            max train epoch:
+            data path:
+            class path:
+            output path:
+            device: 
+                gpu normal,
+                gpu low vram,
+                cpu,
+            mode:
+                lunet, full
+    '''
+
+    args = parse_args()
+    eps, device, mode, model_type, original_resolution, data_path, output_path, model_path, \
+              prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank = config
+    args.pgd_eps = float(eps)/255.0
+    if device == 'cpu':
+        args.cuda, args.low_vram_mode = False, False
+    else:
+        args.cuda, args.low_vram_mode = True, True
+    if mode == 'Mode 1':
+        args.mode = 'lunet'
+    else:
+        args.mode = 'fused'
+    if model_type == 'Stable Diffusion':
+        args.model_type = 'sd'
+        args.resolution = 512
+    else:
+        args.model_type = 'sdxl'
+        args.resolution = 1024
+    if original_resolution:
+        args.original_resolution = True
+
+    assert os.path.exists(data_path) and os.path.exists(output_path)
+    args.instance_data_dir_for_adversarial = data_path
+    args.output_dir = output_path
+    args.pretrained_model_name_or_path = model_path
+    args.instance_prompt = prompt
+    args.max_f_train_steps = max_f_train_steps
+    args.max_train_steps = max_train_steps
+    args.max_adv_train_steps = max_adv_train_steps
+    args.learning_rate = lora_lr
+    args.pgd_alpha = pgd_lr
+    args.rank = rank
+
+    return args
 
 if __name__ == "__main__":
     args = parse_args()
