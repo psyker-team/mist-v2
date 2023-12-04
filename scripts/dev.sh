@@ -55,7 +55,7 @@ accelerate launch attacks/ita.py \
  --max_train_steps 50 \
  --num_train_epochs 1 \
  --max_adv_train_steps 50 \
- --pgd_eps 0.03 \
+ --pgd_eps 0.04 \
  --original_resolution
 
 
