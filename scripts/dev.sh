@@ -48,7 +48,6 @@ accelerate launch attacks/ita.py \
  --output_dir output/mist/sd1-5/painting \
  --instance_prompt "a painting of in the style of sks, high quality, masterpiece" \
  --gradient_checkpointing \
- --pre_compute_text_embeddings \
  --low_vram_mode \
  --mixed_precision bf16 \
  --max_f_train_steps 5 \

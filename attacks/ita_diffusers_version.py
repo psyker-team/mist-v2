@@ -1723,13 +1723,17 @@ def update_args_with_config(args, config):
     '''
 
     args = parse_args()
-    eps, device, mode, model_type, original_resolution, data_path, output_path, model_path, \
+    eps, device, precision, mode, model_type, original_resolution, data_path, output_path, model_path, \
               prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank = config
     args.pgd_eps = float(eps)/255.0
     if device == 'cpu':
         args.cuda, args.low_vram_mode = False, False
     else:
         args.cuda, args.low_vram_mode = True, True
+    if precision == 'bfloat16':
+        args.mixed_precision = 'bf16'
+    else:
+        args.mixed_precision = 'fp16'
     if mode == 'Mode 1':
         args.mode = 'lunet'
     else:

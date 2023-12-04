@@ -8,10 +8,10 @@ from attacks.ita_diffusers_version import update_args_with_config, main
 ''' 
 
 
-def process_image(eps, device, mode, model_type, original_resolution, data_path, output_path, model_path, \
+def process_image(eps, device, precision, mode, model_type, original_resolution, data_path, output_path, model_path, \
               prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank):
 
-    config = (eps, device, mode, model_type, original_resolution, data_path, output_path, model_path, \
+    config = (eps, device, precision, mode, model_type, original_resolution, data_path, output_path, model_path, \
               prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank)
     args = update_args_with_config(config)
     main(args)
@@ -26,6 +26,8 @@ if __name__ == "__main__":
                                     info="Larger strength results in stronger but more visible defense.")
                     device = gr.Radio(["cpu", "gpu"], value="cpu", label="Device",
                                     info="If you do not have good GPUs on your PC, choose 'CPU'.")
+                    precision = gr.Radio(["float16", "bfloat16"], value="bfloat16", label="Precision",
+                                    info="Precision used in computing")
                     mode = gr.Radio(["Mode 1", "Mode 2"], value="Mode 1", label="Mode",
                                     info="Two modes both work with different visualization.")
                     model_type = gr.Radio(["Stable Diffusion", "SDXL"], value="Stable Diffusion", label="Target Model",
@@ -48,7 +50,7 @@ if __name__ == "__main__":
                         rank = gr.Slider(4, 20, step=4, value=4, label='LoRA Ranks',
                                       info="Ranks of LoRA")
 
-                    inputs = [eps, device, mode, model_type, original_resolution, data_path, \
+                    inputs = [eps, device, precision, mode, model_type, original_resolution, data_path, \
                               output_path, model_path, prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank]
                     
                     image_button = gr.Button("Mist")
