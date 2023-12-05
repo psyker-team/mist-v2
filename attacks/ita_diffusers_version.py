@@ -181,7 +181,7 @@ def encode_prompt_sdxl(text_encoders, tokenizers, prompt, text_input_ids_list=No
     for i, text_encoder in enumerate(text_encoders):
         if tokenizers is not None:
             tokenizer = tokenizers[i]
-            text_input_ids = tokenize_prompt(tokenizer, prompt)
+            text_input_ids, attention_mask = tokenize_prompt(tokenizer, prompt)
         else:
             assert text_input_ids_list is not None
             text_input_ids = text_input_ids_list[i]
