@@ -181,7 +181,7 @@ def encode_prompt_sdxl(text_encoders, tokenizers, prompt, text_input_ids_list=No
     for i, text_encoder in enumerate(text_encoders):
         if tokenizers is not None:
             tokenizer = tokenizers[i]
-            text_input_ids = tokenize_prompt(tokenizer, prompt)
+            text_input_ids, attention_mask = tokenize_prompt(tokenizer, prompt)
         else:
             assert text_input_ids_list is not None
             text_input_ids = text_input_ids_list[i]
@@ -1565,10 +1565,11 @@ def main(args):
     # For mixed precision training we cast all non-trainable weights (vae, non-lora text_encoder and non-lora unet) to half-precision
     # as these weights are only used for inference, keeping weights in full precision is not required.
     weight_dtype = torch.float32
-    if accelerator.mixed_precision == "fp16":
-        weight_dtype = torch.float16
-    elif accelerator.mixed_precision == "bf16":
-        weight_dtype = torch.bfloat16
+    if args.cuda:
+        if accelerator.mixed_precision == "fp16":
+            weight_dtype = torch.float16
+        elif accelerator.mixed_precision == "bf16":
+            weight_dtype = torch.bfloat16
     print("==precision: {}==".format(weight_dtype))
 
     # 1.26
