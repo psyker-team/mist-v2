@@ -239,7 +239,7 @@ def parse_args(input_args=None):
     )
     parser.add_argument(
         "--low_vram_mode",
-        action="store_true",
+        action="store_false",
         help="Whether or not to use low vram mode.",
     )
     parser.add_argument(
