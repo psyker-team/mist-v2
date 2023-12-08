@@ -13,4 +13,5 @@ stable-diffusion/*/
 test/
 *.pkl
 data/training/*
-dreambooth/*
+output/lora/*
+output/mist/*
