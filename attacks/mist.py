@@ -779,7 +779,7 @@ def main(args):
             handle = pynvml.nvmlDeviceGetHandleByIndex(0)
             mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
             mem_free = mem_info.free  / float(1073741824)
-            if mem_free < 6.0:
+            if mem_free < 5.5:
                 raise NotImplementedError("Your GPU memory is not enough for running Mist on GPU. Please try CPU mode.")
         except:
             raise NotImplementedError("No GPU found in GPU mode. Please try CPU mode.")
