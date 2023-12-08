@@ -13,3 +13,4 @@ stable-diffusion/*/
 test/
 *.pkl
 data/training/*
+dreambooth/*
