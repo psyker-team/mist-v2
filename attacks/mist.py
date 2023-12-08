@@ -172,7 +172,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--max_f_train_steps",
         type=int,
-        default=5,
+        default=3,
         help="Total number of sub-steps to train surogate model.",
     )
     parser.add_argument(
