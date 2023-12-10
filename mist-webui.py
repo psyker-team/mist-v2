@@ -30,7 +30,7 @@ if __name__ == "__main__":
                     # precision = gr.Radio(["float16", "bfloat16"], value="bfloat16", label="Precision",
                     #                 info="Precision used in computing")
                     resize = gr.Checkbox(value=False, label="Resizing the output image to the original resolution")
-                    mode = gr.Radio(["Mode 1", "Mode 2"], value="Mode 1", label="Mode",
+                    mode = gr.Radio(["Mode 1", "Mode 2", "Mode 3"], value="Mode 1", label="Mode",
                                     info="Two modes both work with different visualization.")
                     # model_type = gr.Radio(["Stable Diffusion", "SDXL"], value="Stable Diffusion", label="Target Model",
                     #                 info="Model used by imaginary copyright infringers")

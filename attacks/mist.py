@@ -296,7 +296,7 @@ def parse_args(input_args=None):
         "--mode",
         "-m",
         type=str,
-        choices=['lunet','fused'],
+        choices=['lunet','fused', 'anti-db'],
         default='lunet',
         help="The mode of attack",
     )
@@ -746,11 +746,12 @@ def pgd_attack(
 
             # target-shift loss
             if target_tensor is not None:
-                loss = - F.mse_loss(model_pred, target_tensor)
-                # fused mode
-                if args.mode == 'fused':
-                    latent_attack = LatentAttack()
-                    loss = loss - 1e2 * latent_attack(latents, target_tensor=target_tensor)
+                if args.mode != 'anti-db':
+                    loss = - F.mse_loss(model_pred, target_tensor)
+                    # fused mode
+                    if args.mode == 'fused':
+                        latent_attack = LatentAttack()
+                        loss = loss - 1e2 * latent_attack(latents, target_tensor=target_tensor)
             loss = loss / args.gradient_accumulation_steps
             grads = autograd.grad(loss, latents)[0].detach().clone()
             # now loss is backproped to latents
@@ -781,7 +782,7 @@ def main(args):
             handle = pynvml.nvmlDeviceGetHandleByIndex(0)
             mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
             mem_free = mem_info.free  / float(1073741824)
-            if mem_free < 6.0:
+            if mem_free < 5.5:
                 raise NotImplementedError("Your GPU memory is not enough for running Mist on GPU. Please try CPU mode.")
         except:
             raise NotImplementedError("No GPU found in GPU mode. Please try CPU mode.")
@@ -941,7 +942,7 @@ def main(args):
 
         target_image = Image.open(target_image_path).convert("RGB").resize((args.resolution, args.resolution))
         target_image = np.array(target_image)[None].transpose(0, 3, 1, 2)
-        if args.cuda():
+        if args.cuda:
             target_image_tensor = torch.from_numpy(target_image).to("cuda", dtype=weight_dtype) / 127.5 - 1.0
         else:
             target_image_tensor = torch.from_numpy(target_image).to(dtype=weight_dtype) / 127.5 - 1.0
@@ -1064,8 +1065,10 @@ def update_args_with_config(args, config):
     #     args.mixed_precision = 'fp16'
     if mode == 'Mode 1':
         args.mode = 'lunet'
-    else:
+    elif mode == 'Mode 2':
         args.mode = 'fused'
+    elif mode == 'Mode 3':
+        args.mode = 'anti-db'
     if resize:
         args.resize = True
 
