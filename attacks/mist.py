@@ -613,7 +613,7 @@ def train_one_epoch(
     for step in range(args.max_f_train_steps):
         unet.train()
         text_encoder.train()
-        
+
         random.seed(time.time())
         instance_idx = random.randint(0, len(train_dataset)-1)
         step_data = train_dataset[instance_idx]
@@ -1059,7 +1059,7 @@ def update_args_with_config(args, config):
 
     args = parse_args()
     eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight = config
+        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight, fused_weight = config
     args.pgd_eps = float(eps)/255.0
     if device == 'cpu':
         args.cuda, args.low_vram_mode = False, False
@@ -1093,6 +1093,7 @@ def update_args_with_config(args, config):
     args.pgd_alpha = pgd_lr
     args.rank = rank
     args.prior_loss_weight = prior_loss_weight
+    args.fused_weight = fused_weight
 
     return args
 

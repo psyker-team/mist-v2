@@ -9,10 +9,10 @@ from attacks.mist import update_args_with_config, main
 
 
 def process_image(eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight):
+        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight, fused_weight):
 
     config = (eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight)
+        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight, fused_weight)
     args = None
     args = update_args_with_config(args, config)
     main(args)
@@ -53,12 +53,13 @@ if __name__ == "__main__":
                         rank = gr.Slider(4, 32, step=4, value=4, label='LoRA Ranks',
                                       info="Ranks of LoRA (Bigger ranks need better GPUs)")
                         prior_loss_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of prior loss", value=0.1, float=True)
+                        fused_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of vae loss", value=0.00001, float=True)
 
                     # inputs = [eps, device, precision, mode, model_type, original_resolution, data_path, \
                     #           output_path, model_path, prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank]
                     
                     inputs = [eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-                        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight]
+                        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight, fused_weight]
                     
 
                     image_button = gr.Button("Mist")
