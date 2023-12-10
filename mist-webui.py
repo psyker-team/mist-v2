@@ -44,7 +44,7 @@ if __name__ == "__main__":
                         class_prompt = gr.Textbox(label="Class prompt", lines=1, placeholder="Prompt for contrast images.")
                         max_train_steps = gr.Slider(1, 20, step=1, value=5, label='Epochs',
                                       info="Training epochs of Mist-V2")
-                        max_f_train_steps = gr.Slider(0, 5, step=1, value=1, label='LoRA Steps',
+                        max_f_train_steps = gr.Slider(0, 30, step=1, value=5, label='LoRA Steps',
                                       info="Training steps of LoRA in one epoch")
                         max_adv_train_steps = gr.Slider(0, 200, step=10, value=50, label='Attacking Steps',
                                       info="Training steps of attacking in one epoch")
