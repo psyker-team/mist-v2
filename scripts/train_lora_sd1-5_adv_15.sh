@@ -1,4 +1,4 @@
-export MODEL_NAME="stable-diffusion/novelai"
+export MODEL_NAME="stable-diffusion/stable-diffusion-1-5"
 export INSTANCE_DIR="output/mist/sd1-5/kent"
 export OUTPUT_DIR="output/lora/sd1-5_adv/kent"
 export CLASS_DIR="data/lora_class"
