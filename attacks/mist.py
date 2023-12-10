@@ -662,7 +662,11 @@ def train_one_epoch(
                     # calculate loss of class(prior)
                     loss *= args.prior_loss_weight
                 loss.backward()
-                print(f"loss - step {step}, loss: {loss.detach().item()}")
+                if k == 1:
+                    print(f"==loss - image index {instance_idx}, loss: {loss.detach().item()}, prior")
+                else:
+                    print(f"==loss - image index {instance_idx}, loss: {loss.detach().item()}, instance")
+                    
             params_to_clip = (
                         itertools.chain(unet.parameters(), text_encoder.parameters())
                         if args.train_text_encoder
