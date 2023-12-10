@@ -566,14 +566,14 @@ def train_one_epoch(
             target_replace_module=["CLIPAttention"],
             r=args.lora_rank,
         )
-        for _up, _down in extract_lora_ups_down(
-            text_encoder, target_replace_module=["CLIPAttention"]
-        ):
-            print("Before training: text encoder First Layer lora up", _up.weight.data)
-            print(
-                "Before training: text encoder First Layer lora down", _down.weight.data
-            )
-            break
+        # for _up, _down in extract_lora_ups_down(
+        #     text_encoder, target_replace_module=["CLIPAttention"]
+        # ):
+        #     print("Before training: text encoder First Layer lora up", _up.weight.data)
+        #     print(
+        #         "Before training: text encoder First Layer lora down", _down.weight.data
+        #     )
+        #     break
     
     # build the optimizer
     optimizer_class = torch.optim.AdamW
