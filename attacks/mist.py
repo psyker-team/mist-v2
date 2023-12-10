@@ -78,28 +78,28 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--instance_data_dir",
         type=str,
-        default="data/artwork-test",
+        default="",
         required=False,
         help="A folder containing the images to add adversarial noise",
     )
     parser.add_argument(
         "--class_data_dir",
         type=str,
-        default="data/artwork-test",
+        default="",
         required=False,
         help="A folder containing the training data of class images.",
     )
     parser.add_argument(
         "--instance_prompt",
         type=str,
-        default="a photo of sks person",
+        default="a picture",
         required=False,
         help="The prompt with identifier specifying the instance",
     )
     parser.add_argument(
         "--class_prompt",
         type=str,
-        default="a photo of person",
+        default="a picture",
         help="The prompt to specify images in the same class as provided instance images.",
     )
     parser.add_argument(
@@ -125,7 +125,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="outputs/ASPL_M/artwork-test",
+        default="",
         help="The output directory where the perturbed data is stored",
     )
     parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
@@ -302,12 +302,6 @@ def parse_args(input_args=None):
         help="The mode of attack",
     )
     parser.add_argument(
-        "--lr_warmup_steps",
-        type=int,
-        default=500,
-        help="Number of steps for the warmup in the lr scheduler.",
-    )
-    parser.add_argument(
         "--use_8bit_adam",
         action="store_true",
         help="Whether or not to use 8-bit Adam from bitsandbytes.",
@@ -335,17 +329,6 @@ def parse_args(input_args=None):
     )
     parser.add_argument(
         "--max_grad_norm", default=1.0, type=float, help="Max gradient norm."
-    )
-    parser.add_argument(
-        "--push_to_hub",
-        action="store_true",
-        help="Whether or not to push the model to the Hub.",
-    )
-    parser.add_argument(
-        "--hub_token",
-        type=str,
-        default=None,
-        help="The token to use to push to the Model Hub.",
     )
 
     parser.add_argument(
@@ -663,7 +646,7 @@ def train_one_epoch(
                     loss *= args.prior_loss_weight
                 loss.backward()
                 if k == 1:
-                    print(f"==loss - image index {instance_idx}, loss: {loss.detach().item()}, prior")
+                    print(f"==loss - image index {instance_idx}, loss: {loss.detach().item() / args.prior_loss_weight}, prior")
                 else:
                     print(f"==loss - image index {instance_idx}, loss: {loss.detach().item()}, instance")
                     
