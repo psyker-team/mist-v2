@@ -33,7 +33,6 @@ from torch import autograd
 from typing import Optional, Tuple
 import pynvml
 # from utils import print_tensor
-pynvml.nvmlInit()
 
 from lora_diffusion import (
     extract_lora_ups_down,
@@ -772,11 +771,6 @@ def pgd_attack(
         image_list.append(perturbed_image.detach().clone().squeeze(0))
     outputs = torch.stack(image_list)
 
-    '''
-    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-    print("mem after pgd: {}".format(mem_info.used / float(1073741824)))
-    '''
 
     return outputs
     
@@ -909,10 +903,14 @@ def main(args):
     
 
     noise_scheduler = DDIMScheduler.from_pretrained(args.pretrained_model_name_or_path, subfolder="scheduler")
-
-    vae = AutoencoderKL.from_pretrained(
-        args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
-    ).cuda()
+    if not args.cuda:
+        vae = AutoencoderKL.from_pretrained(
+            args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
+        ).cuda()
+    else:
+        vae = AutoencoderKL.from_pretrained(
+            args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
+        )
     vae.to(accelerator.device, dtype=weight_dtype)
     vae.requires_grad_(False)
     vae.encoder.training = True
@@ -943,14 +941,15 @@ def main(args):
 
         target_image = Image.open(target_image_path).convert("RGB").resize((args.resolution, args.resolution))
         target_image = np.array(target_image)[None].transpose(0, 3, 1, 2)
-
-        target_image_tensor = torch.from_numpy(target_image).to("cuda", dtype=torch.bfloat16) / 127.5 - 1.0
+        if args.cuda():
+            target_image_tensor = torch.from_numpy(target_image).to("cuda", dtype=weight_dtype) / 127.5 - 1.0
+        else:
+            target_image_tensor = torch.from_numpy(target_image).to(dtype=weight_dtype) / 127.5 - 1.0
         target_latent_tensor = (
-            vae.encode(target_image_tensor).latent_dist.sample().to(dtype=torch.bfloat16) * vae.config.scaling_factor
+            vae.encode(target_image_tensor).latent_dist.sample().to(dtype=weight_dtype) * vae.config.scaling_factor
         )
         target_image_tensor = target_image_tensor.to('cpu')
         del target_image_tensor
-        gc.collect()
         #target_latent_tensor = target_latent_tensor.repeat(len(perturbed_data), 1, 1, 1).cuda()
     f = [unet, text_encoder]
     for i in range(args.max_train_steps):        
@@ -968,7 +967,8 @@ def main(args):
             weight_dtype,
         )
         del f_sur
-        gc.collect()
+        if args.cuda:
+            gc.collect()
         f = train_one_epoch(
             args,
             accelerator,
@@ -985,10 +985,14 @@ def main(args):
             if model != None:
                 model.to('cpu')
         
-        gc.collect()
-        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-        print("=======mem after epoch {}: {}======".format(i, mem_info.used / float(1073741824)))
+        if args.cuda:
+            gc.collect()
+            pynvml.nvmlInit()
+            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+            print("=======Epoch {} ends! Memory cost: {}======".format(i, mem_info.used / float(1073741824)))
+        else:
+            print("=======Epoch {} ends!======".format(i))
 
         if (i + 1) % args.max_train_steps == 0:
             save_folder = f"{args.output_dir}"
