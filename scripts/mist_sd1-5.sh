@@ -17,5 +17,5 @@ accelerate launch attacks/mist.py \
  --prior_loss_weight 0.1 \
  --pgd_alpha 0.005 \
  --pgd_eps 0.04 \
- --max_adv_train_steps 10 \
+ --max_adv_train_steps 20 \
  --max_f_train_steps 10 \

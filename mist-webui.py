@@ -42,11 +42,11 @@ if __name__ == "__main__":
 
                     with gr.Accordion("Professional Setups", open=False):
                         class_prompt = gr.Textbox(label="Class prompt", lines=1, placeholder="Prompt for contrast images.")
-                        max_train_steps = gr.Slider(1, 20, step=1, value=5, label='Epochs',
+                        max_train_steps = gr.Slider(1, 20, step=1, value=10, label='Epochs',
                                       info="Training epochs of Mist-V2")
                         max_f_train_steps = gr.Slider(0, 30, step=1, value=5, label='LoRA Steps',
                                       info="Training steps of LoRA in one epoch")
-                        max_adv_train_steps = gr.Slider(0, 200, step=10, value=50, label='Attacking Steps',
+                        max_adv_train_steps = gr.Slider(0, 200, step=10, value=30, label='Attacking Steps',
                                       info="Training steps of attacking in one epoch")
                         lora_lr = gr.Number(minimum=0.0, maximum=1.0, label="The learning rate of LoRA", value=0.0001, float=True)
                         pgd_lr = gr.Number(minimum=0.0, maximum=1.0, label="The learning rate of PGD", value=0.005, float=True)
