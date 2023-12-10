@@ -524,8 +524,10 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
                 with open(prompt_path, "r") as file:
                     text_string = file.read()
                     prompts.append(text_string)
+                    print("==load image from {}, prompt: {}==".format(file_path, text_string))
             else:
                 prompts.append(None)
+                print("==load image from {}, prompt: None, args.instance_prompt used==".format(file_path))
 
     # load sizes
     sizes = [img.size for img in images]
