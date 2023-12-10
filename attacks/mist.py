@@ -383,7 +383,7 @@ class DreamBoothDatasetFromTensor(Dataset):
         self.size = size
         self.center_crop = center_crop
         self.tokenizer = tokenizer
-
+        
         self.instance_images_tensor = instance_images_tensor
         self.instance_prompts = prompts
         self.num_instance_images = len(self.instance_images_tensor)
@@ -395,7 +395,8 @@ class DreamBoothDatasetFromTensor(Dataset):
             self.class_data_root.mkdir(parents=True, exist_ok=True)
             self.class_images_path = list(self.class_data_root.iterdir())
             self.num_class_images = len(self.class_images_path)
-            self._length = max(self.num_class_images, self.num_instance_images)
+            # self._length = max(self.num_class_images, self.num_instance_images)
+            self._length = min(self.num_class_images, self.num_instance_images)
             self.class_prompt = class_prompt
         else:
             self.class_data_root = None
@@ -495,10 +496,12 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
 
     # load images & prompts
     images, prompts = [], []
+    num_image = 0
     for filename in os.listdir(data_dir):
         if filename.endswith(".png") or filename.endswith(".jpg"):
             file_path = os.path.join(data_dir, filename)
             images.append(Image.open(file_path).convert("RGB"))
+            num_image += 1
 
             prompt_name = filename[:-3] + 'txt'
             prompt_path = os.path.join(data_dir, prompt_name)
@@ -506,10 +509,10 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
                 with open(prompt_path, "r") as file:
                     text_string = file.read()
                     prompts.append(text_string)
-                    print("==load image from {}, prompt: {}==".format(file_path, text_string))
+                    print("==load image from {}, prompt: {}==".format(num_image-1, file_path, text_string))
             else:
                 prompts.append(None)
-                print("==load image from {}, prompt: None, args.instance_prompt used==".format(file_path))
+                print("==load image {} from {}, prompt: None, args.instance_prompt used==".format(num_image-1, file_path))
 
     # load sizes
     sizes = [img.size for img in images]
@@ -517,6 +520,7 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
     # preprocess images
     images = [image_transforms(img) for img in images]
     images = torch.stack(images)
+    print("==tensor shape: {}==".format(images.shape))
 
     return images, prompts, sizes
 
