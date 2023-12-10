@@ -9,10 +9,10 @@ from attacks.mist import update_args_with_config, main
 
 
 def process_image(eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank):
+        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight):
 
     config = (eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank)
+        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight)
     args = None
     args = update_args_with_config(args, config)
     main(args)
@@ -44,20 +44,21 @@ if __name__ == "__main__":
                         class_prompt = gr.Textbox(label="Class prompt", lines=1, placeholder="Prompt for contrast images.")
                         max_train_steps = gr.Slider(1, 20, step=1, value=5, label='Epochs',
                                       info="Training epochs of Mist-V2")
-                        max_f_train_steps = gr.Slider(0, 20, step=1, value=4, label='LoRA Steps',
+                        max_f_train_steps = gr.Slider(0, 5, step=1, value=1, label='LoRA Steps',
                                       info="Training steps of LoRA in one epoch")
                         max_adv_train_steps = gr.Slider(0, 200, step=10, value=50, label='Attacking Steps',
                                       info="Training steps of attacking in one epoch")
-                        lora_lr = gr.Number(label="The learning rate of LoRA", value=0.0001)
-                        pgd_lr = gr.Number(label="The learning rate of PGD", value=0.005)
+                        lora_lr = gr.Number(minimum=0.0, maximum=1.0, label="The learning rate of LoRA", value=0.0001, float=True)
+                        pgd_lr = gr.Number(minimum=0.0, maximum=1.0, label="The learning rate of PGD", value=0.005, float=True)
                         rank = gr.Slider(4, 32, step=4, value=4, label='LoRA Ranks',
                                       info="Ranks of LoRA (Bigger ranks need better GPUs)")
+                        prior_loss_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of prior loss", value=0.1, float=True)
 
                     # inputs = [eps, device, precision, mode, model_type, original_resolution, data_path, \
                     #           output_path, model_path, prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank]
                     
                     inputs = [eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-                        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank]
+                        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight]
                     
 
                     image_button = gr.Button("Mist")

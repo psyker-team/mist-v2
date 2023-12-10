@@ -172,19 +172,13 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--max_f_train_steps",
         type=int,
-        default=4,
+        default=1,
         help="Total number of sub-steps to train surogate model.",
     )
     parser.add_argument(
         "--max_adv_train_steps",
         type=int,
         default=50,
-        help="Total number of sub-steps to train adversarial noise.",
-    )
-    parser.add_argument(
-        "--pre_attack_steps",
-        type=int,
-        default=10,
         help="Total number of sub-steps to train adversarial noise.",
     )
     parser.add_argument(
@@ -396,6 +390,7 @@ class DreamBoothDatasetFromTensor(Dataset):
     def __init__(
         self,
         instance_images_tensor,
+        prompts,
         instance_prompt,
         tokenizer,
         class_data_root=None,
@@ -408,6 +403,7 @@ class DreamBoothDatasetFromTensor(Dataset):
         self.tokenizer = tokenizer
 
         self.instance_images_tensor = instance_images_tensor
+        self.instance_prompts = prompts
         self.num_instance_images = len(self.instance_images_tensor)
         self.instance_prompt = instance_prompt
         self._length = self.num_instance_images
@@ -437,9 +433,14 @@ class DreamBoothDatasetFromTensor(Dataset):
     def __getitem__(self, index):
         example = {}
         instance_image = self.instance_images_tensor[index % self.num_instance_images]
+        instance_prompt = self.instance_prompts[index % self.num_instance_images]
+        if instance_prompt == None:
+            instance_prompt = self.instance_prompt
+        instance_prompt = \
+            'masterpiece,best quality,extremely detailed CG unity 8k wallpaper,illustration,cinematic lighting,beautiful detailed glow' + instance_prompt
         example["instance_images"] = instance_image
         example["instance_prompt_ids"] = self.tokenizer(
-            self.instance_prompt,
+            instance_prompt,
             truncation=True,
             padding="max_length",
             max_length=self.tokenizer.model_max_length,
@@ -510,16 +511,30 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
         ]
     )
 
-    images = []
+    # load images & prompts
+    images, prompts = [], []
     for filename in os.listdir(data_dir):
         if filename.endswith(".png") or filename.endswith(".jpg"):
             file_path = os.path.join(data_dir, filename)
             images.append(Image.open(file_path).convert("RGB"))
 
+            prompt_name = filename[:-3] + 'txt'
+            prompt_path = os.path.join(data_dir, prompt_name)
+            if os.path.exists(prompt_path):
+                with open(prompt_path, "r") as file:
+                    text_string = file.read()
+                    prompts.append(text_string)
+            else:
+                prompts.append(None)
+
+    # load sizes
     sizes = [img.size for img in images]
+
+    # preprocess images
     images = [image_transforms(img) for img in images]
     images = torch.stack(images)
-    return images, sizes
+
+    return images, prompts, sizes
 
 
 def train_one_epoch(
@@ -530,11 +545,13 @@ def train_one_epoch(
     noise_scheduler,
     vae,
     data_tensor: torch.Tensor,
+    prompts, 
     weight_dtype=torch.bfloat16,
 ):
     # prepare training data
     train_dataset = DreamBoothDatasetFromTensor(
         data_tensor,
+        prompts,
         args.instance_prompt,
         tokenizer,
         args.class_data_dir,
@@ -553,6 +570,8 @@ def train_one_epoch(
     unet.to(device, dtype=weight_dtype)
     if args.low_vram_mode:
         set_use_memory_efficient_attention_xformers(unet,True)
+
+    # this is only done at the first epoch
     unet_lora_params, _ = inject_trainable_lora(
         unet, r=args.lora_rank, loras=args.resume_unet
     )
@@ -606,50 +625,50 @@ def train_one_epoch(
     for step in range(args.max_f_train_steps):
         unet.train()
         text_encoder.train()
-
-        step_data = train_dataset[step % len(train_dataset)]
-        pixel_values = torch.stack([step_data["instance_images"], step_data["class_images"]])
-        #print("pixel_values shape: {}".format(pixel_values.shape))
-        input_ids = torch.cat([step_data["instance_prompt_ids"], step_data["class_prompt_ids"]], dim=0).to(device)
-        for k in range(pixel_values.shape[0]):
-            #calculate loss of instance and class seperately
-            pixel_value = pixel_values[k, :].unsqueeze(0).to(device, dtype=weight_dtype)
-            latents = vae.encode(pixel_value).latent_dist.sample().detach().clone()
-            latents = latents * vae.config.scaling_factor
-            # Sample noise that we'll add to the latents
-            noise = torch.randn_like(latents)
-            bsz = latents.shape[0]
-            # Sample a random timestep for each image
-            timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
-            timesteps = timesteps.long()
-            # Add noise to the latents according to the noise magnitude at each timestep
-            # (this is the forward diffusion process)
-            noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
-            # encode text
-            input_id = input_ids[k, :].unsqueeze(0)
-            encode_hidden_states = text_encoder(input_id)[0]
-            # Get the target for loss depending on the prediction type
-            if noise_scheduler.config.prediction_type == "epsilon":
-                target = noise
-            elif noise_scheduler.config.prediction_type == "v_prediction":
-                target = noise_scheduler.get_velocity(latents, noise, timesteps)
-            else:
-                raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
-            model_pred= unet(noisy_latents, timesteps, encode_hidden_states).sample
-            loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
-            if k == 1:
-                # calculate loss of class(prior)
-                loss *= args.prior_loss_weight
-            loss.backward()
-            print(f"loss - step {step}, loss: {loss.detach().item()}")
-        params_to_clip = (
-                    itertools.chain(unet.parameters(), text_encoder.parameters())
-                    if args.train_text_encoder
-                    else unet.parameters()
-                )
-        torch.nn.utils.clip_grad_norm_(params_to_clip, 1.0, error_if_nonfinite=True)
-        optimizer.step()
-        optimizer.zero_grad()
+        for instance_idx in range(len(train_dataset)):
+            step_data = train_dataset[instance_idx]
+            pixel_values = torch.stack([step_data["instance_images"], step_data["class_images"]])
+            #print("pixel_values shape: {}".format(pixel_values.shape))
+            input_ids = torch.cat([step_data["instance_prompt_ids"], step_data["class_prompt_ids"]], dim=0).to(device)
+            for k in range(pixel_values.shape[0]):
+                #calculate loss of instance and class seperately
+                pixel_value = pixel_values[k, :].unsqueeze(0).to(device, dtype=weight_dtype)
+                latents = vae.encode(pixel_value).latent_dist.sample().detach().clone()
+                latents = latents * vae.config.scaling_factor
+                # Sample noise that we'll add to the latents
+                noise = torch.randn_like(latents)
+                bsz = latents.shape[0]
+                # Sample a random timestep for each image
+                timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
+                timesteps = timesteps.long()
+                # Add noise to the latents according to the noise magnitude at each timestep
+                # (this is the forward diffusion process)
+                noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+                # encode text
+                input_id = input_ids[k, :].unsqueeze(0)
+                encode_hidden_states = text_encoder(input_id)[0]
+                # Get the target for loss depending on the prediction type
+                if noise_scheduler.config.prediction_type == "epsilon":
+                    target = noise
+                elif noise_scheduler.config.prediction_type == "v_prediction":
+                    target = noise_scheduler.get_velocity(latents, noise, timesteps)
+                else:
+                    raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
+                model_pred= unet(noisy_latents, timesteps, encode_hidden_states).sample
+                loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                if k == 1:
+                    # calculate loss of class(prior)
+                    loss *= args.prior_loss_weight
+                loss.backward()
+                print(f"loss - step {step}, loss: {loss.detach().item()}")
+            params_to_clip = (
+                        itertools.chain(unet.parameters(), text_encoder.parameters())
+                        if args.train_text_encoder
+                        else unet.parameters()
+                    )
+            torch.nn.utils.clip_grad_norm_(params_to_clip, 1.0, error_if_nonfinite=True)
+            optimizer.step()
+            optimizer.zero_grad()
     
     return [unet, text_encoder]
 
@@ -779,7 +798,7 @@ def main(args):
             handle = pynvml.nvmlDeviceGetHandleByIndex(0)
             mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
             mem_free = mem_info.free  / float(1073741824)
-            if mem_free < 5.5:
+            if mem_free < 6.0:
                 raise NotImplementedError("Your GPU memory is not enough for running Mist on GPU. Please try CPU mode.")
         except:
             raise NotImplementedError("No GPU found in GPU mode. Please try CPU mode.")
@@ -914,17 +933,11 @@ def main(args):
     
     if not args.train_text_encoder:
         text_encoder.requires_grad_(False)
-    # print(Back.BLUE+Fore.GREEN+'train_text_encoder: {}'.format(args.train_text_encoder))
-    # print(Back.BLUE+Fore.GREEN+'low_vram_mode: {}'.format(args.low_vram_mode))
-    # print(Back.BLUE+Fore.GREEN+'use_8bit_adam: {}'.format(args.use_8bit_adam))
-    # added by lora
-    #text_encoder.requires_grad_(False)
-    # end: added by lora
 
     if args.allow_tf32:
         torch.backends.cuda.matmul.allow_tf32 = True
 
-    perturbed_data, data_sizes = load_data(
+    perturbed_data, prompts, data_sizes = load_data(
         args.instance_data_dir,
         size=args.resolution,
         center_crop=args.center_crop,
@@ -975,6 +988,7 @@ def main(args):
             noise_scheduler,
             vae,
             perturbed_data,
+            prompts,
             weight_dtype,
         )
         
@@ -1045,7 +1059,7 @@ def update_args_with_config(args, config):
 
     args = parse_args()
     eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank = config
+        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight = config
     args.pgd_eps = float(eps)/255.0
     if device == 'cpu':
         args.cuda, args.low_vram_mode = False, False
@@ -1076,6 +1090,7 @@ def update_args_with_config(args, config):
     args.learning_rate = lora_lr
     args.pgd_alpha = pgd_lr
     args.rank = rank
+    args.prior_loss_weight = prior_loss_weight
 
     return args
 
@@ -1083,3 +1098,4 @@ def update_args_with_config(args, config):
 if __name__ == "__main__":
     args = parse_args()
     main(args)
+
