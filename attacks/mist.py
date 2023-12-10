@@ -8,6 +8,7 @@ import sys
 import gc
 from pathlib import Path
 from colorama import Fore, Style, init,Back
+import random, time
 '''some system level settings'''
 init(autoreset=True)
 sys.path.insert(0, sys.path[0]+"/../")
@@ -612,8 +613,9 @@ def train_one_epoch(
     for step in range(args.max_f_train_steps):
         unet.train()
         text_encoder.train()
-
-        instance_idx = torch.randint(0, len(train_dataset))
+        
+        random.seed(time.time())
+        instance_idx = random.randint(0, len(train_dataset)-1)
         step_data = train_dataset[instance_idx]
         pixel_values = torch.stack([step_data["instance_images"], step_data["class_images"]])
         #print("pixel_values shape: {}".format(pixel_values.shape))
