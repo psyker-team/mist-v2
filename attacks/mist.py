@@ -12,6 +12,7 @@ import random, time
 '''some system level settings'''
 init(autoreset=True)
 sys.path.insert(0, sys.path[0]+"/../")
+import lpips
 
 import datasets
 import diffusers
@@ -249,6 +250,18 @@ def parse_args(input_args=None):
         help="The noise budget for pgd.",
     )
     parser.add_argument(
+        "--lpips_bound",
+        type=float,
+        default=0.1,
+        help="The noise budget for pgd.",
+    )
+    parser.add_argument(
+        "--lpips_weight",
+        type=float,
+        default=0.5,
+        help="The noise budget for pgd.",
+    )
+    parser.add_argument(
         "--fused_weight",
         type=float,
         default=1e-5,
@@ -295,11 +308,17 @@ def parse_args(input_args=None):
     )
     parser.add_argument(
         "--mode",
-        "-m",
         type=str,
         choices=['lunet','fused', 'anti-db'],
         default='lunet',
         help="The mode of attack",
+    )
+    parser.add_argument(
+        "--constraint",
+        type=str,
+        choices=['eps','lpips'],
+        default='eps',
+        help="The constraint of attack",
     )
     parser.add_argument(
         "--use_8bit_adam",
@@ -686,6 +705,8 @@ def pgd_attack(
 
     unet, text_encoder = models
     device = accelerator.device
+    if args.constraint == 'lpips':
+        lpips_vgg = lpips.LPIPS(net='vgg')
 
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
@@ -758,6 +779,14 @@ def pgd_attack(
                     if args.mode == 'fused':
                         latent_attack = LatentAttack()
                         loss = loss - 1e2 * latent_attack(latents, target_tensor=target_tensor)
+
+            # regularize the loss with lpips if applicable
+            if args.constraint == 'lpips':
+                lpips_distance = lpips_vgg(perturbed_image, original_image)
+                reg_loss = torch.max(lpips_distance - args.lpips_bound, 0)[0]
+                loss += args.lpips_weight * reg_loss.squeeze()
+            
+
             loss = loss / args.gradient_accumulation_steps
             grads = autograd.grad(loss, latents)[0].detach().clone()
             # now loss is backproped to latents
@@ -766,13 +795,20 @@ def pgd_attack(
             perturbed_image.requires_grad = True
             gc_latents = vae.encode(perturbed_image.to(device, dtype=weight_dtype)).latent_dist.mean
             gc_latents.backward(gradient=grads)
-            alpha = args.pgd_alpha
-            eps = args.pgd_eps
+            
             if step % args.gradient_accumulation_steps == args.gradient_accumulation_steps - 1:
+                alpha = args.pgd_alpha
                 adv_images = perturbed_image + alpha * perturbed_image.grad.sign()
-                eta = torch.clamp(adv_images - original_image, min=-eps, max=+eps)
-                perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
-                perturbed_image.requires_grad = True
+                if args.constraint == 'eps':
+                    eps = args.pgd_eps
+                    eta = torch.clamp(adv_images - original_image, min=-eps, max=+eps)
+                    perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
+                    perturbed_image.requires_grad = True
+                elif args.constraint == 'lpips':
+                    eta = adv_images - original_image
+                    perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
+                    perturbed_image.requires_grad = True
+
             #print(f"PGD loss - step {step}, loss: {loss.detach().item()}")
 
         image_list.append(perturbed_image.detach().clone().squeeze(0))
@@ -1059,7 +1095,8 @@ def update_args_with_config(args, config):
 
     args = parse_args()
     eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank, prior_loss_weight, fused_weight = config
+        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, \
+            rank, prior_loss_weight, fused_weight, constraint_mode, lpips_bound, lpips_weight = config
     args.pgd_eps = float(eps)/255.0
     if device == 'cpu':
         args.cuda, args.low_vram_mode = False, False
@@ -1094,6 +1131,10 @@ def update_args_with_config(args, config):
     args.rank = rank
     args.prior_loss_weight = prior_loss_weight
     args.fused_weight = fused_weight
+
+    args.constraint = constraint_mode
+    args.lpips_bound = lpips_bound
+    args.lpips_weight = lpips_weight
 
     return args
 
