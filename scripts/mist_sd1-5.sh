@@ -1,6 +1,6 @@
 export MODEL_NAME="stable-diffusion/stable-diffusion-1-5"
-export INSTANCE_DIR="data/training/kent/"
-export OUTPUT_DIR="output/mist/sd1-5/kent"
+export INSTANCE_DIR="data/training/sangdelan/"
+export OUTPUT_DIR="output/mist/sd1-5/sangdelan"
 export CLASS_DIR="data/class"
  
 accelerate launch attacks/mist.py \
@@ -10,7 +10,7 @@ accelerate launch attacks/mist.py \
  --output_dir=$OUTPUT_DIR \
  --class_data_dir=$CLASS_DIR\
  --instance_prompt "an animated girl" \
- --class_prompt "an animated girl" \
+ --class_prompt "a oil painting of a girl, high quality, master piece" \
  --mixed_precision bf16 \
  --max_train_steps 10 \
  --checkpointing_iterations 1 \
