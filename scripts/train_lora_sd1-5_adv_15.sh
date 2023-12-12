@@ -1,6 +1,6 @@
 export MODEL_NAME="stable-diffusion/stable-diffusion-1-5"
-export INSTANCE_DIR="output/mist/sd1-5/kent"
-export OUTPUT_DIR="output/lora/sd1-5_adv/kent"
+export INSTANCE_DIR="output/mist/sd1-5/sangdelan/5_50_10_lunet"
+export OUTPUT_DIR="output/lora/sd1-5_adv/sangdelan/5_50_10_lunet"
 export CLASS_DIR="data/lora_class"
 
 accelerate launch eval/train_dreambooth_lora_15.py \

@@ -778,14 +778,7 @@ def pgd_attack(
                     # fused mode
                     if args.mode == 'fused':
                         latent_attack = LatentAttack()
-                        loss = loss - 1e2 * latent_attack(latents, target_tensor=target_tensor)
-
-            # regularize the loss with lpips if applicable
-            if args.constraint == 'lpips':
-                lpips_distance = lpips_vgg(perturbed_image, original_image)
-                reg_loss = torch.max(lpips_distance - args.lpips_bound, 0)[0]
-                loss += args.lpips_weight * reg_loss.squeeze()
-            
+                        loss = loss - 1e2 * latent_attack(latents, target_tensor=target_tensor)            
 
             loss = loss / args.gradient_accumulation_steps
             grads = autograd.grad(loss, latents)[0].detach().clone()
@@ -797,18 +790,29 @@ def pgd_attack(
             gc_latents.backward(gradient=grads)
             
             if step % args.gradient_accumulation_steps == args.gradient_accumulation_steps - 1:
-                alpha = args.pgd_alpha
-                adv_images = perturbed_image + alpha * perturbed_image.grad.sign()
+                
                 if args.constraint == 'eps':
+                    alpha = args.pgd_alpha
+                    adv_images = perturbed_image + alpha * perturbed_image.grad.sign()
+
+                    # hard constraint
                     eps = args.pgd_eps
                     eta = torch.clamp(adv_images - original_image, min=-eps, max=+eps)
                     perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
                     perturbed_image.requires_grad = True
                 elif args.constraint == 'lpips':
+                    # compute reg loss
+                    lpips_distance = lpips_vgg(perturbed_image, original_image)
+                    reg_loss = args.lpips_weight * torch.max(lpips_distance - args.lpips_bound, 0)[0].squeeze()
+                    reg_loss.backward()
+
+                    alpha = args.pgd_alpha
+                    adv_images = perturbed_image + alpha * perturbed_image.grad.sign()
+
                     eta = adv_images - original_image
                     perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
                     perturbed_image.requires_grad = True
-
+                    
             #print(f"PGD loss - step {step}, loss: {loss.detach().item()}")
 
         image_list.append(perturbed_image.detach().clone().squeeze(0))

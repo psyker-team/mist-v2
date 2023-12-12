@@ -12,11 +12,11 @@ accelerate launch attacks/mist.py \
  --instance_prompt "an animated girl" \
  --class_prompt "a oil painting of a girl, high quality, master piece" \
  --mixed_precision bf16 \
- --max_train_steps 2 \
+ --max_train_steps 1 \
  --checkpointing_iterations 1 \
  --prior_loss_weight 0.1 \
  --pgd_alpha 0.005 \
  --pgd_eps 0.04 \
- --max_adv_train_steps 100 \
+ --max_adv_train_steps 50 \
  --max_f_train_steps 10 \
  --constraint lpips
