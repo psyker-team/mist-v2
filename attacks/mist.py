@@ -111,7 +111,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--prior_loss_weight",
         type=float,
-        default=1.0,
+        default=0.1,
         help="The weight of prior preservation loss.",
     )
     parser.add_argument(

@@ -1,6 +1,6 @@
 export MODEL_NAME="stable-diffusion/stable-diffusion-1-5"
-export INSTANCE_DIR="data/training/kent/"
-export OUTPUT_DIR="output/mist/sd1-5/param/5_30_10_lunet"
+export INSTANCE_DIR="data/training/"
+export OUTPUT_DIR="output/mist/"
 export CLASS_DIR="data/class"
  
 accelerate launch attacks/mist.py \

@@ -1,6 +1,6 @@
 export MODEL_NAME="stable-diffusion/stable-diffusion-1-5"
-export INSTANCE_DIR="output/mist/sd1-5/sangdelan/5_50_10_lunet"
-export OUTPUT_DIR="output/lora/sd1-5_adv/sangdelan/5_50_10_lunet"
+export INSTANCE_DIR="output/mist/"
+export OUTPUT_DIR="output/lora/"
 export CLASS_DIR="data/lora_class"
 
 accelerate launch eval/train_dreambooth_lora_15.py \
@@ -15,5 +15,5 @@ accelerate launch eval/train_dreambooth_lora_15.py \
   --gradient_accumulation_steps=1 \
   --learning_rate=1e-4 \
   --scale_lr \
-  --max_train_steps=2000 \
+  --max_train_steps=3000 \
   --mixed_precision=bf16 \
