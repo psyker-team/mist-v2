@@ -101,6 +101,8 @@ Mist-v2 works by adversarially attacking generative diffusion models. Basically,
 
 $$\mathop{min}_{x'}\mathbb{E}_{z'_0, \epsilon,t} \Vert \epsilon_\theta(z'_t(z'_0,\epsilon),t)-z_0^T\Vert^2_2\\, \Vert x'-x\Vert\leq\zeta$$
 
+$$\zeta$$
+
 We demonstrate the notation in the following table.
 
 | Variable          | Explanation                                                      |
