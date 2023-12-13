@@ -50,16 +50,16 @@ if __name__ == "__main__":
                                       info="Training steps of LoRA in one epoch")
                         max_adv_train_steps = gr.Slider(0, 100, step=5, value=30, label='Attacking Steps',
                                       info="Training steps of attacking in one epoch")
-                        lora_lr = gr.Number(minimum=0.0, maximum=1.0, label="The learning rate of LoRA", value=0.0001, float=True)
-                        pgd_lr = gr.Number(minimum=0.0, maximum=1.0, label="The learning rate of PGD", value=0.005, float=True)
+                        lora_lr = gr.Number(minimum=0.0, maximum=1.0, label="The learning rate of LoRA", value=0.0001)
+                        pgd_lr = gr.Number(minimum=0.0, maximum=1.0, label="The learning rate of PGD", value=0.005)
                         rank = gr.Slider(4, 32, step=4, value=4, label='LoRA Ranks',
                                       info="Ranks of LoRA (Bigger ranks need better GPUs)")
-                        prior_loss_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of prior loss", value=0.1, float=True)
-                        fused_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of vae loss", value=0.00001, float=True)
+                        prior_loss_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of prior loss", value=0.1)
+                        fused_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of vae loss", value=0.00001)
                         constraint_mode = gr.Radio(["Epsilon", "LPIPS"], value="Epsilon", label="Constraint Mode",
                                     info="The mode to constraint the watermark")
-                        lpips_bound = gr.Number(minimum=0.0, maximum=0.2, label="The LPIPS bound", value=0.1, float=True)
-                        lpips_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of LPIPI constraint", value=0.5, float=True)
+                        lpips_bound = gr.Number(minimum=0.0, maximum=0.2, label="The LPIPS bound", value=0.1)
+                        lpips_weight = gr.Number(minimum=0.0, maximum=1.0, label="The weight of LPIPI constraint", value=0.5)
 
                     # inputs = [eps, device, precision, mode, model_type, original_resolution, data_path, \
                     #           output_path, model_path, prompt, max_f_train_steps, max_train_steps, max_adv_train_steps, lora_lr, pgd_lr, rank]
