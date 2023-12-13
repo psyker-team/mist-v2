@@ -100,7 +100,9 @@ Finally, run the second block to see the output and evaluate the performance of 
 Mist-v2 works by adversarially attacking generative diffusion models. Basically, the attacking is an optimization over the following objective:
 
 $$
+
     \mathop{min}_{x'}\mathbb{E}_{\boldsymbol{z'_0}, \boldsymbol{\epsilon},t} \Vert \epsilon_\theta(z'_t(\boldsymbol{z'_0},\boldsymbol{\epsilon}),t)-z_0^T\Vert^2_2\\, \Vert x'-x\Vert\leq\zeta 
+    
 $$
 
 We demonstrate the notation in the following table.
