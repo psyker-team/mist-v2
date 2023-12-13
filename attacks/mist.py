@@ -173,13 +173,13 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--max_f_train_steps",
         type=int,
-        default=5,
+        default=10,
         help="Total number of sub-steps to train surogate model.",
     )
     parser.add_argument(
         "--max_adv_train_steps",
         type=int,
-        default=50,
+        default=30,
         help="Total number of sub-steps to train adversarial noise.",
     )
     parser.add_argument(
