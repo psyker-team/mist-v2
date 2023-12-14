@@ -380,9 +380,10 @@ def parse_args(input_args=None):
         args = parser.parse_args(input_args)
     else:
         args = parser.parse_args()
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir,exist_ok=True)
-        print(Back.BLUE+Fore.GREEN+'create output dir: {}'.format(args.output_dir))
+    if args.output_dir != "":
+        if not os.path.exists(args.output_dir):
+            os.makedirs(args.output_dir,exist_ok=True)
+            print(Back.BLUE+Fore.GREEN+'create output dir: {}'.format(args.output_dir))
     return args
 
 
