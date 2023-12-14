@@ -712,7 +712,8 @@ def pgd_attack(
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
     unet.to(device, dtype=weight_dtype)
-    unet.set_use_memory_efficient_attention_xformers(True)
+    if args.low_vram_mode:
+        unet.set_use_memory_efficient_attention_xformers(True)
     vae.requires_grad_(False)
     text_encoder.requires_grad_(False)
     unet.requires_grad_(False)
