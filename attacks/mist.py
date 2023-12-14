@@ -380,10 +380,9 @@ def parse_args(input_args=None):
         args = parser.parse_args(input_args)
     else:
         args = parser.parse_args()
-    if args.output_dir != "":
-        if not os.path.exists(args.output_dir):
-            os.makedirs(args.output_dir,exist_ok=True)
-            print(Back.BLUE+Fore.GREEN+'create output dir: {}'.format(args.output_dir))
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir,exist_ok=True)
+        print(Back.BLUE+Fore.GREEN+'create output dir: {}'.format(args.output_dir))
     return args
 
 
@@ -813,6 +812,8 @@ def pgd_attack(
                     eta = adv_images - original_image
                     perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
                     perturbed_image.requires_grad = True
+                else:
+                    raise NotImplementedError
                     
             #print(f"PGD loss - step {step}, loss: {loss.detach().item()}")
 
@@ -1137,7 +1138,10 @@ def update_args_with_config(args, config):
     args.prior_loss_weight = prior_loss_weight
     args.fused_weight = fused_weight
 
-    args.constraint = constraint_mode
+    if constraint_mode == 'LPIPS':
+        args.constraint = 'lpips'
+    else:
+        args.constraint = 'eps'
     args.lpips_bound = lpips_bound
     args.lpips_weight = lpips_weight
 
