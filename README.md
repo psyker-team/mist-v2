@@ -173,9 +173,7 @@ Finally, run the second block to see the output and evaluate the performance of 
 
 Mist V2 works by adversarially attacking generative diffusion models. Basically, the attacking is an optimization over the following objective:
 
-$$
-    \mathop{min}_{x'}\mathbb{E}_{\boldsymbol{z'_0}, \boldsymbol{\epsilon},t} \Vert \epsilon_\theta(z'_t(\boldsymbol{z'_0},\boldsymbol{\epsilon}),t)-z_0^T\Vert^2_2\\, \Vert x'-x\Vert\leq\zeta 
-$$
+$$ \underset{x'}{min} \mathbb{E} {(z_0', \epsilon,t)}  \Vert \epsilon_\theta(z'_t(z'_0,\epsilon),t)-z_0^T\Vert^2_2, \Vert x'-x\Vert\leq\zeta$$
 
 We demonstrate the notation in the following table.
 
@@ -214,4 +212,27 @@ If you find our work valuable and utilize it, we kindly request that you cite ou
       primaryClass={cs.CV}
 }
 ```
+
+Our repository also refers to following papers:
+
+```
+@inproceedings{van2023anti,
+  title={Anti-DreamBooth: Protecting users from personalized text-to-image synthesis},
+  author={Van Le, Thanh and Phung, Hao and Nguyen, Thuan Hoang and Dao, Quan and Tran, Ngoc N and Tran, Anh},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  pages={2116--2127},
+  year={2023}
+}
+```
+
+```
+@article{liang2023mist,
+  title={Mist: Towards Improved Adversarial Examples for Diffusion Models},
+  author={Liang, Chumeng and Wu, Xiaoyu},
+  journal={arXiv preprint arXiv:2305.12683},
+  year={2023}
+}
+```
+
+
 
