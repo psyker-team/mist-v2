@@ -15,4 +15,4 @@ test/
 data/training/*
 output/lora/*
 output/mist/*
-!assets/
+!assets/*
