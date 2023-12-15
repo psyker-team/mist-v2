@@ -32,7 +32,7 @@
 <!-- #endregion -->
 
 > Mist's Effects in User Cases. **The first row:** Lora generation from source images.
-**The second row:** Lora generation from Mist-treated samples. Mist V2 significantly disrupts the output of the generation, effectively protecting artists' images. Images featured are from artist xxx, used with permission. 
+**The second row:** Lora generation from Mist-treated samples. Mist V2 significantly disrupts the output of the generation, effectively protecting artists' images. Used images are from anonymous artists. All rights reserved. 
 <!-- #region -->
 <!-- <p align="center">
 <img  src="robustness.png">
