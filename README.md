@@ -1,4 +1,78 @@
-# Mist-v2
+<p align="center">
+<br>
+<!-- <img  src="mist_logo.png"> -->
+<img  src="assets/MIST_V2_LOGO.png">
+<br>
+</p>
+
+
+[![project page](https://img.shields.io/badge/homepage-mist--project.io-blue.svg)](https://mist-project.github.io)
+[![arXiv](https://img.shields.io/badge/arXiv-2310.04687-red.svg)](https://arxiv.org/abs/2310.04687)
+<!-- 
+[![document](https://img.shields.io/badge/document-passing-light_green.svg)](https://arxiv.org/abs/2310.04687)
+-->
+<!-- 
+### [project page](https://mist-project.github.io) | [arxiv](https://arxiv.org/abs/2310.04687) | [document](https://arxiv.org/abs/2310.04687) -->
+
+<!-- #region -->
+<!-- <p align="center">
+<img  src="effect_show.png">
+</p> -->
+<!-- #endregion -->
+<!-- 
+> Mist adds watermarks to images, making them unrecognizable and unusable for AI-for-Art models that try to mimic them. -->
+
+<!-- #region -->
+<p align="center">
+<img  src="assets/user_2.jpg">
+</p>
+<!-- <p align="center">
+<img  src="user_case_2.png">
+</p> -->
+<!-- #endregion -->
+
+> Mist's Effects in User Cases. **The first row:** Lora generation from source images.
+**The second row:** Lora generation from Mist-treated samples. Mist V2 significantly disrupts the output of the generation, effectively protecting artists' images. Images featured are from artist xxx, used with permission. 
+<!-- #region -->
+<!-- <p align="center">
+<img  src="robustness.png">
+</p> -->
+<!-- #endregion -->
+
+<!-- > Robustness of Mist against image preprocessing. -->
+
+<!-- ## News
+
+**2022/12/11**: Mist V2 released.  -->
+
+## Main Features
+- Enhanced protection against AI-for-Art applications like Lora and SDEdit
+- Imperceptible noise.
+- 3-5 minutes processing with only 6GB of GPU memory in most cases. CPU processing supported.
+- Resilience against denoising methods.
+
+
+## About Mist
+Mist is a powerful image preprocessing tool designed for the purpose of protecting the style and content of
+images from being mimicked by state-of-the-art AI-for-Art applications. By adding watermarks to the images, Mist renders them unrecognizable and inmitable for the
+models employed by AI-for-Art applications. Attempts by AI-for-Art applications to mimic these Misted images
+will be ineffective, and the output image of such mimicry will be scrambled and unusable as artwork.
+
+
+<p align="center">
+<img  src="assets/effect_show.png">
+</p>
+
+In Mist V2, we have enhanced its effectiveness against a wider range of AI-for-Art applications, particularly excelling with Lora. Mist V2 achieves robust defense with even more discreet watermarks compared to [Mist V1](https://github.com/mist-project/mist). Additionally, Mist V2 introduces support for CPU processing and can efficiently run on GPUs with as little as 6GB of memory in most cases.
+
+
+ <!-- For more details, refer to our [documentation](https://arxiv.org/abs/2310.04687). -->
+
+
+
+
+
+
 
 ## Quick Start
 
@@ -24,12 +98,12 @@ pip install -r requirements.txt
 
 ### Usage
 
-Run Mist-v2 in the default setup on GPU:
+Run Mist V2 in the default setup on GPU:
 ```bash
 accelerate launch attacks/mist.py --cuda --low_vram_mode --instance_data_dir $INSTANCE_DIR --output_dir $OUTPUT_DIR --class_data_dir $CLASS_DATA_DIR --instance_prompt $PROMPT --class_prompt $CLASS_PROMPT --mixed_precision bf16
 ```
 
-Run Mist-v2 in the default setup on CPU:
+Run Mist V2 in the default setup on CPU:
 ```bash
 accelerate launch attacks/mist.py --instance_data_dir $INSTANCE_DIR --output_dir $OUTPUT_DIR --class_data_dir $CLASS_DATA_DIR --instance_prompt $PROMPT --class_prompt $CLASS_PROMPT --mixed_precision bf16
 ```
@@ -44,7 +118,7 @@ The parameters are demonstrated in the following table:
 | $PROMPT         | Prompt that describes the input clean images, used to perturb the images.                  |
 | $CLASS_PROMPT   | Prompt used to generate class data, recommended to be similar to $PROMPT.                  |
 
-Here is a case command to run Mist-v2 on GPU:
+Here is a case command to run Mist V2 on GPU:
 
 ```bash
 accelerate launch attacks/mist.py --cuda --low_vram_mode --instance_data_dir data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a photo of a misted person, high quality, masterpiece" --class_prompt "a photo of a person, high quality, masterpiece" --mixed_precision bf16
@@ -97,10 +171,11 @@ Finally, run the second block to see the output and evaluate the performance of 
 
 ## A Glimpse to Methodology
 
-Mist-v2 works by adversarially attacking generative diffusion models. Basically, the attacking is an optimization over the following objective:
+Mist V2 works by adversarially attacking generative diffusion models. Basically, the attacking is an optimization over the following objective:
 
-$$ \underset{x'}{min} \mathbb{E} {(z_0', \epsilon,t)}  \Vert \epsilon_\theta(z'_t(z'_0,\epsilon),t)-z_0^T\Vert^2_2, \Vert x'-x\Vert\leq\zeta$$
-
+$$
+    \mathop{min}_{x'}\mathbb{E}_{\boldsymbol{z'_0}, \boldsymbol{\epsilon},t} \Vert \epsilon_\theta(z'_t(\boldsymbol{z'_0},\boldsymbol{\epsilon}),t)-z_0^T\Vert^2_2\\, \Vert x'-x\Vert\leq\zeta 
+$$
 
 We demonstrate the notation in the following table.
 
@@ -117,6 +192,26 @@ We demonstrate the notation in the following table.
 
 Intuitively, we find that pushing the output of the U-Net in the diffusion model to the 0th timestep 
 latent variable of a target image can effectively confuse the diffusion model. This abstracts the 
-aforementioned objective of Mist-v2.
+aforementioned objective of Mist V2.
 
 Our paper is still in working. We are trying to reveal the mechanism behind our method in the paper. Despite of this, you can access [Arxiv]() to view the first draft of our paper.
+
+## License
+
+This project is licensed under the [GPL-3.0 license](https://github.com/mist-project/mist/blob/main/LICENSE). 
+
+ 
+## Citation
+If you find our work valuable and utilize it, we kindly request that you cite our paper.
+
+```
+@misc{zheng2023understanding,
+      title={Understanding and Improving Adversarial Attacks on Latent Diffusion Model}, 
+      author={Boyang Zheng and Chumeng Liang and Xiaoyu Wu and Yan Liu},
+      year={2023},
+      eprint={2310.04687},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
+
