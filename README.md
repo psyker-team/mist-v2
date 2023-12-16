@@ -6,7 +6,7 @@
 </p>
 
 
-[![project page](https://img.shields.io/badge/homepage-mist--project.io-blue.svg)](https://mist-project.github.io)
+[![project page](https://img.shields.io/badge/homepage-mist--project.io-blue.svg)](https://mist-project.github.io/index_en.html)
 [![arXiv](https://img.shields.io/badge/arXiv-2310.04687-red.svg)](https://arxiv.org/abs/2310.04687)
 <!-- 
 [![document](https://img.shields.io/badge/document-passing-light_green.svg)](https://arxiv.org/abs/2310.04687)
