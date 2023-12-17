@@ -203,13 +203,11 @@ This project is licensed under the [GPL-3.0 license](https://github.com/mist-pro
 If you find our work valuable and utilize it, we kindly request that you cite our paper.
 
 ```
-@misc{zheng2023understanding,
-      title={Understanding and Improving Adversarial Attacks on Latent Diffusion Model}, 
-      author={Boyang Zheng and Chumeng Liang and Xiaoyu Wu and Yan Liu},
-      year={2023},
-      eprint={2310.04687},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV}
+@article{zheng2023understanding,
+  title={Understanding and Improving Adversarial Attacks on Latent Diffusion Model},
+  author={Zheng, Boyang and Liang, Chumeng and Wu, Xiaoyu and Liu, Yan},
+  journal={arXiv preprint arXiv:2310.04687},
+  year={2023}
 }
 ```
 
