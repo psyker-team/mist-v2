@@ -1,5 +1,5 @@
 import gradio as gr
-from attacks.mist import update_args_with_config, main
+from attacks.mist import main
 import subprocess
 
 '''
@@ -25,12 +25,12 @@ def run_mist(eps, device, mode, resize, data_path, output_path, model_path, clas
             rank, prior_loss_weight, fused_weight, mixed_precision):
 
     # Initialize command list
-    command = ["accelerate", "launch"]
+    command = ["../venv/Scripts/accelerate.exe", "launch"]
     if device == 'cpu':
-        command.append("--cpu")      
+        command.append("--cpu")
 
     # Append each parameter to the command list
-    command.append("attacks/mist_dev.py")
+    command.append("attacks/mist.py")
     command.append("--pgd_eps")
     command.append(str(eps))
     if device == 'gpu':
@@ -77,7 +77,6 @@ def run_mist(eps, device, mode, resize, data_path, output_path, model_path, clas
     command.append(str(fused_weight))
     command.append("--mixed_precision")
     command.append(mixed_precision)
-    
 
     # Execute the command
     subprocess.run(command)
