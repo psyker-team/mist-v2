@@ -12,7 +12,6 @@ import random, time
 '''some system level settings'''
 init(autoreset=True)
 sys.path.insert(0, sys.path[0]+"/../")
-import lpips
 
 import datasets
 import diffusers
@@ -30,6 +29,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from tqdm.auto import tqdm
+from torch.cuda.amp import GradScaler, autocast
 from transformers import AutoTokenizer, PretrainedConfig
 from torch import autograd
 from typing import Optional, Tuple
@@ -47,345 +47,100 @@ logger = get_logger(__name__)
 
 def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
-    parser.add_argument(
-        "--cuda",
-        action="store_true",
-        help="Use gpu for attack",
-    )
-    parser.add_argument(
-        "--pretrained_model_name_or_path",
-        "-p",
-        type=str,
-        default="./stable-diffusion/stable-diffusion-1-5",
-        required=False,
-        help="Path to pretrained model or model identifier from huggingface.co/models.",
-    )
-    parser.add_argument(
-        "--revision",
-        type=str,
-        default=None,
-        required=False,
-        help=(
-            "Revision of pretrained model identifier from huggingface.co/models. Trainable model components should be"
-            " float32 precision."
-        ),
-    )
-    parser.add_argument(
-        "--tokenizer_name",
-        type=str,
-        default=None,
-        help="Pretrained tokenizer name or path if not the same as model_name",
-    )
-    parser.add_argument(
-        "--instance_data_dir",
-        type=str,
-        default="",
-        required=False,
-        help="A folder containing the images to add adversarial noise",
-    )
-    parser.add_argument(
-        "--class_data_dir",
-        type=str,
-        default="",
-        required=False,
-        help="A folder containing the training data of class images.",
-    )
-    parser.add_argument(
-        "--instance_prompt",
-        type=str,
-        default="a picture",
-        required=False,
-        help="The prompt with identifier specifying the instance",
-    )
-    parser.add_argument(
-        "--class_prompt",
-        type=str,
-        default="a picture",
-        help="The prompt to specify images in the same class as provided instance images.",
-    )
-    parser.add_argument(
-        "--with_prior_preservation",
-        default=True,
-        help="Flag to add prior preservation loss.",
-    )
-    parser.add_argument(
-        "--prior_loss_weight",
-        type=float,
-        default=0.1,
-        help="The weight of prior preservation loss.",
-    )
-    parser.add_argument(
-        "--num_class_images",
-        type=int,
-        default=50,
-        help=(
-            "Minimal class images for prior preservation loss. If there are not enough images already present in"
-            " class_data_dir, additional images will be sampled with class_prompt."
-        ),
-    )
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default="",
-        help="The output directory where the perturbed data is stored",
-    )
-    parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
-    parser.add_argument(
-        "--resolution",
-        type=int,
-        default=512,
-        help=(
-            "The resolution for input images, all the images in the train/validation dataset will be resized to this"
-            " resolution"
-        ),
-    )
-    parser.add_argument(
-        "--center_crop",
-        default=True,
-        help=(
-            "Whether to center crop the input images to the resolution. If not set, the images will be randomly"
-            " cropped. The images will be resized to the resolution first before cropping."
-        ),
-    )
-    parser.add_argument(
-        "--train_text_encoder",
-        action="store_false",
-        help="Whether to train the text encoder. If set, the text encoder should be float32 precision.",
-    )
-    parser.add_argument(
-        "--train_batch_size",
-        type=int,
-        default=1,
-        help="Batch size (per device) for the training dataloader.",
-    )
-    parser.add_argument(
-        "--sample_batch_size",
-        type=int,
-        default=1,
-        help="Batch size (per device) for sampling images.",
-    )
-    parser.add_argument(
-        "--max_train_steps",
-        type=int,
-        default=5,
-        help="Total number of training steps to perform.",
-    )
-    parser.add_argument(
-        "--max_f_train_steps",
-        type=int,
-        default=10,
-        help="Total number of sub-steps to train surogate model.",
-    )
-    parser.add_argument(
-        "--max_adv_train_steps",
-        type=int,
-        default=30,
-        help="Total number of sub-steps to train adversarial noise.",
-    )
-    parser.add_argument(
-        "--gradient_accumulation_steps",
-        type=int,
-        default=1,
-        help="Number of updates steps to accumulate before performing a backward/update pass.",
-    )
-    parser.add_argument(
-        "--checkpointing_iterations",
-        type=int,
-        default=5,
-        help=("Save a checkpoint of the training state every X iterations."),
-    )
 
-    parser.add_argument(
-        "--logging_dir",
-        type=str,
-        default="logs",
-        help=(
-            "[TensorBoard](https://www.tensorflow.org/tensorboard) log directory. Will default to"
-            " *output_dir/runs/**CURRENT_DATETIME_HOSTNAME***."
-        ),
-    )
-    parser.add_argument(
-        "--allow_tf32",
-        action="store_true",
-        help=(
-            "Whether or not to allow TF32 on Ampere GPUs. Can be used to speed up training. For more information, see"
-            " https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices"
-        ),
-    )
-    parser.add_argument(
-        "--report_to",
-        type=str,
-        default="tensorboard",
-        help=(
-            'The integration to report the results and logs to. Supported platforms are `"tensorboard"`'
-            ' (default), `"wandb"` and `"comet_ml"`. Use `"all"` to report to all integrations.'
-        ),
-    )
-    parser.add_argument(
-        "--mixed_precision",
-        type=str,
-        default="bf16",
-        choices=["no", "fp16", "bf16"],
-        help=(
-            "Whether to use mixed precision. Choose between fp16 and bf16 (bfloat16). Bf16 requires PyTorch >="
-            " 1.10.and an Nvidia Ampere GPU.  Default to the value of accelerate config of the current system or the"
-            " flag passed with the `accelerate.launch` command. Use this argument to override the accelerate config."
-        ),
-    )
-    parser.add_argument(
-        "--low_vram_mode",
-        action="store_false",
-        help="Whether or not to use low vram mode.",
-    )
-    parser.add_argument(
-        "--pgd_alpha",
-        type=float,
-        default=5e-3,
-        help="The step size for pgd.",
-    )
-    parser.add_argument(
-        "--pgd_eps",
-        type=float,
-        default=float(8.0/255.0),
-        help="The noise budget for pgd.",
-    )
-    parser.add_argument(
-        "--lpips_bound",
-        type=float,
-        default=0.1,
-        help="The noise budget for pgd.",
-    )
-    parser.add_argument(
-        "--lpips_weight",
-        type=float,
-        default=0.5,
-        help="The noise budget for pgd.",
-    )
-    parser.add_argument(
-        "--fused_weight",
-        type=float,
-        default=1e-5,
-        help="The decay of alpha and eps when applying pre_attack",
-    )
-    parser.add_argument(
-        "--target_image_path",
-        default="data/MIST.png",
-        help="target image for attacking",
-    )
+    # Define all arguments as strings
+    parser.add_argument("--cuda", action='store_true', help="Use GPU for attack (true/false)")
+    parser.add_argument("--pretrained_model_name_or_path", "-p", type=str, default="./stable-diffusion/stable-diffusion-1-5", help="Path to pretrained model or model identifier from huggingface.co/models.")
+    parser.add_argument("--revision", type=str, default="", help="Revision of pretrained model identifier from huggingface.co/models.")
+    parser.add_argument("--tokenizer_name", type=str, default="", help="Pretrained tokenizer name or path if not the same as model_name")
+    parser.add_argument("--instance_data_dir", type=str, default="", help="A folder containing the images to add adversarial noise")
+    parser.add_argument("--class_data_dir", type=str, default="", help="A folder containing the training data of class images.")
+    parser.add_argument("--instance_prompt", type=str, default="a picture", help="The prompt with identifier specifying the instance")
+    parser.add_argument("--class_prompt", type=str, default="a picture", help="The prompt to specify images in the same class as provided instance images.")
+    parser.add_argument("--with_prior_preservation", type=str, default="true", help="Flag to add prior preservation loss (true/false).")
+    parser.add_argument("--prior_loss_weight", type=str, default="0.1", help="The weight of prior preservation loss.")
+    parser.add_argument("--num_class_images", type=str, default="50", help="Minimal class images for prior preservation loss.")
+    parser.add_argument("--output_dir", type=str, default="", help="The output directory where the perturbed data is stored")
+    parser.add_argument("--seed", type=str, default="", help="A seed for reproducible training.")
+    parser.add_argument("--resolution", type=str, default="512", help="The resolution for input images.")
+    parser.add_argument("--center_crop", type=str, default="true", help="Whether to center crop the input images to the resolution (true/false).")
+    parser.add_argument("--train_text_encoder", type=str, default="false", help="Whether to train the text encoder (true/false).")
+    parser.add_argument("--train_batch_size", type=str, default="1", help="Batch size (per device) for the training dataloader.")
+    parser.add_argument("--sample_batch_size", type=str, default="1", help="Batch size (per device) for sampling images.")
+    parser.add_argument("--max_train_steps", type=str, default="5", help="Total number of training steps to perform.")
+    parser.add_argument("--max_f_train_steps", type=str, default="10", help="Total number of sub-steps to train surrogate model.")
+    parser.add_argument("--max_adv_train_steps", type=str, default="30", help="Total number of sub-steps to train adversarial noise.")
+    parser.add_argument("--gradient_accumulation_steps", type=str, default="1", help="Number of updates steps to accumulate before performing a backward/update pass.")
+    parser.add_argument("--checkpointing_iterations", type=str, default="5", help="Save a checkpoint of the training state every X iterations.")
+    parser.add_argument("--logging_dir", type=str, default="logs", help="TensorBoard log directory.")
+    parser.add_argument("--allow_tf32", type=str, default="false", help="Whether or not to allow TF32 on Ampere GPUs (true/false).")
+    parser.add_argument("--report_to", type=str, default="tensorboard", help='The integration to report the results and logs to.')
+    parser.add_argument("--mixed_precision", type=str, default="bf16", choices=["no", "fp16", "bf16"], help="Whether to use mixed precision.")
+    parser.add_argument("--low_vram_mode", action='store_true', help="Whether or not to use low vram mode (true/false).")
+    parser.add_argument("--pgd_alpha", type=str, default="0.005", help="The step size for pgd.")
+    parser.add_argument("--pgd_eps", type=str, default=str(8.0/255.0), help="The noise budget for pgd.")
+    parser.add_argument("--fused_weight", type=str, default="0.00001", help="The decay of alpha and eps when applying pre-attack")
+    parser.add_argument("--target_image_path", type=str, default="data/MIST.png", help="Target image for attacking")
+    parser.add_argument("--lora_rank", type=str, default="4", help="Rank of LoRA approximation.")
+    parser.add_argument("--learning_rate", type=str, default="0.0001", help="Initial learning rate to use.")
+    parser.add_argument("--learning_rate_text", type=str, default="0.000005", help="Initial learning rate for text encoder to use.")
+    parser.add_argument("--scale_lr", type=str, default="false", help="Scale the learning rate by the number of GPUs, gradient accumulation steps, and batch size (true/false).")
+    parser.add_argument("--lr_scheduler", type=str, default="constant", help="The scheduler type to use.")
+    parser.add_argument("--mode", type=str, default="lunet", choices=['lunet','fused', 'anti-db'], help="The mode of attack")
+    parser.add_argument("--use_8bit_adam", type=str, default="false", help="Whether or not to use 8-bit Adam from bitsandbytes (true/false).")
+    parser.add_argument("--adam_beta1", type=str, default="0.9", help="The beta1 parameter for the Adam optimizer.")
+    parser.add_argument("--adam_beta2", type=str, default="0.999", help="The beta2 parameter for the Adam optimizer.")
+    parser.add_argument("--adam_weight_decay", type=str, default="0.01", help="Weight decay to use.")
+    parser.add_argument("--adam_epsilon", type=str, default="0.00000001", help="Epsilon value for the Adam optimizer")
+    parser.add_argument("--max_grad_norm", type=str, default="1.0", help="Max gradient norm.")
+    parser.add_argument("--local_rank", type=str, default="-1", help="For distributed training: local_rank")
+    parser.add_argument("--resume_unet", type=str, default=None, help="File path for unet lora to resume training.")
+    parser.add_argument("--resume_text_encoder", type=str, default=None, help="File path for text encoder lora to resume training.")
+    parser.add_argument("--resize", action='store_true', help="Should images be resized to --resolution after attacking? (true/false)")
 
-    parser.add_argument(
-        "--lora_rank",
-        type=int,
-        default=4,
-        help="Rank of LoRA approximation.",
-    )
-    parser.add_argument(
-        "--learning_rate",
-        type=float,
-        default=1e-4,
-        help="Initial learning rate (after the potential warmup period) to use.",
-    )
-    parser.add_argument(
-        "--learning_rate_text",
-        type=float,
-        default=5e-6,
-        help="Initial learning rate for text encoder (after the potential warmup period) to use.",
-    )
-    parser.add_argument(
-        "--scale_lr",
-        action="store_true",
-        default=False,
-        help="Scale the learning rate by the number of GPUs, gradient accumulation steps, and batch size.",
-    )
-    parser.add_argument(
-        "--lr_scheduler",
-        type=str,
-        default="constant",
-        help=(
-            'The scheduler type to use. Choose between ["linear", "cosine", "cosine_with_restarts", "polynomial",'
-            ' "constant", "constant_with_warmup"]'
-        ),
-    )
-    parser.add_argument(
-        "--mode",
-        type=str,
-        choices=['lunet','fused', 'anti-db'],
-        default='lunet',
-        help="The mode of attack",
-    )
-    parser.add_argument(
-        "--constraint",
-        type=str,
-        choices=['eps','lpips'],
-        default='eps',
-        help="The constraint of attack",
-    )
-    parser.add_argument(
-        "--use_8bit_adam",
-        action="store_true",
-        help="Whether or not to use 8-bit Adam from bitsandbytes.",
-    )
-    parser.add_argument(
-        "--adam_beta1",
-        type=float,
-        default=0.9,
-        help="The beta1 parameter for the Adam optimizer.",
-    )
-    parser.add_argument(
-        "--adam_beta2",
-        type=float,
-        default=0.999,
-        help="The beta2 parameter for the Adam optimizer.",
-    )
-    parser.add_argument(
-        "--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use."
-    )
-    parser.add_argument(
-        "--adam_epsilon",
-        type=float,
-        default=1e-08,
-        help="Epsilon value for the Adam optimizer",
-    )
-    parser.add_argument(
-        "--max_grad_norm", default=1.0, type=float, help="Max gradient norm."
-    )
+    # Parse the arguments from input_args or from sys.argv if input_args is None
+    args = parser.parse_args(input_args)
 
-    parser.add_argument(
-        "--local_rank",
-        type=int,
-        default=-1,
-        help="For distributed training: local_rank",
-    )
-    parser.add_argument(
-        "--resume_unet",
-        type=str,
-        default=None,
-        help=("File path for unet lora to resume training."),
-    )
-    parser.add_argument(
-        "--resume_text_encoder",
-        type=str,
-        default=None,
-        help=("File path for text encoder lora to resume training."),
-    )
-    parser.add_argument(
-        "--resize",
-        action='store_true',
-        required=False,
-        help="Should images be resized to --resolution after attacking?",
-    )
+    # Manually convert arguments to their respective types
+    args.with_prior_preservation = args.with_prior_preservation.lower() == 'true'
+    args.center_crop = args.center_crop.lower() == 'true'
+    args.train_text_encoder = args.train_text_encoder.lower() == 'true'
+    args.allow_tf32 = args.allow_tf32.lower() == 'true'
+    args.scale_lr = args.scale_lr.lower() == 'true'
+    args.use_8bit_adam = args.use_8bit_adam.lower() == 'true'
 
+    args.prior_loss_weight = float(args.prior_loss_weight)
+    args.pgd_alpha = float(args.pgd_alpha)
+    args.pgd_eps = float(args.pgd_eps)
+    args.fused_weight = float(args.fused_weight)
+    args.learning_rate = float(args.learning_rate)
+    args.learning_rate_text = float(args.learning_rate_text)
+    args.adam_beta1 = float(args.adam_beta1)
+    args.adam_beta2 = float(args.adam_beta2)
+    args.adam_weight_decay = float(args.adam_weight_decay)
+    args.adam_epsilon = float(args.adam_epsilon)
+    args.max_grad_norm = float(args.max_grad_norm)
 
-    if input_args is not None:
-        args = parser.parse_args(input_args)
-    else:
-        args = parser.parse_args()
+    args.num_class_images = int(args.num_class_images)
+    args.seed = int(args.seed) if args.seed else None
+    args.resolution = int(args.resolution)
+    args.train_batch_size = int(args.train_batch_size)
+    args.sample_batch_size = int(args.sample_batch_size)
+    args.max_train_steps = int(args.max_train_steps)
+    args.max_f_train_steps = int(args.max_f_train_steps)
+    args.max_adv_train_steps = int(args.max_adv_train_steps)
+    args.gradient_accumulation_steps = int(args.gradient_accumulation_steps)
+    args.checkpointing_iterations = int(args.checkpointing_iterations)
+    args.lora_rank = int(args.lora_rank)
+    args.local_rank = int(args.local_rank)
+
+    # Post-processing (e.g., directory creation)
     if args.output_dir != "":
         if not os.path.exists(args.output_dir):
-            os.makedirs(args.output_dir,exist_ok=True)
-            print(Back.BLUE+Fore.GREEN+'create output dir: {}'.format(args.output_dir))
-    return args
+            os.makedirs(args.output_dir, exist_ok=True)
+            print(Back.BLUE + Fore.GREEN + 'create output dir: {}'.format(args.output_dir))
 
+    return args
 
 class DreamBoothDatasetFromTensor(Dataset):
     """Just like DreamBoothDataset, but take instance_images_tensor instead of path"""
@@ -583,20 +338,29 @@ def train_one_epoch(
     unet_lora_params, _ = inject_trainable_lora(
         unet, r=args.lora_rank, loras=args.resume_unet
     )
+    if weight_dtype == torch.float16:
+        for _up, _down in extract_lora_ups_down(
+                unet
+            ):
+                _up.to(dtype=torch.float32)
+                _down.to(dtype=torch.float32)
+        # for params in unet_lora_params:
+        #     print(params, type(params))
+        #     params.to(dtype=torch.float32)
     if args.train_text_encoder:
         text_encoder_lora_params, _ = inject_trainable_lora(
             text_encoder,
             target_replace_module=["CLIPAttention"],
             r=args.lora_rank,
         )
-        # for _up, _down in extract_lora_ups_down(
-        #     text_encoder, target_replace_module=["CLIPAttention"]
-        # ):
-        #     print("Before training: text encoder First Layer lora up", _up.weight.data)
-        #     print(
-        #         "Before training: text encoder First Layer lora down", _down.weight.data
-        #     )
-        #     break
+        if weight_dtype == torch.float16:
+            # for params in text_encoder_lora_params:
+            #     params.to(dtype=torch.float32)
+            for _up, _down in extract_lora_ups_down(
+                text_encoder, target_replace_module=["CLIPAttention"]
+            ):
+                _up.to(dtype=torch.float32)
+                _down.to(dtype=torch.float32)
     
     # build the optimizer
     optimizer_class = torch.optim.AdamW
@@ -630,59 +394,118 @@ def train_one_epoch(
     )
 
     # begin training
-    for step in range(args.max_f_train_steps):
-        unet.train()
-        text_encoder.train()
+    if weight_dtype == torch.float16:
+        scaler = GradScaler()
+        with autocast():
+            for step in range(args.max_f_train_steps):
+                unet.train()
+                text_encoder.train()
 
-        random.seed(time.time())
-        instance_idx = random.randint(0, len(train_dataset)-1)
-        step_data = train_dataset[instance_idx]
-        pixel_values = torch.stack([step_data["instance_images"], step_data["class_images"]])
-        #print("pixel_values shape: {}".format(pixel_values.shape))
-        input_ids = torch.cat([step_data["instance_prompt_ids"], step_data["class_prompt_ids"]], dim=0).to(device)
-        for k in range(pixel_values.shape[0]):
-            #calculate loss of instance and class seperately
-            pixel_value = pixel_values[k, :].unsqueeze(0).to(device, dtype=weight_dtype)
-            latents = vae.encode(pixel_value).latent_dist.sample().detach().clone()
-            latents = latents * vae.config.scaling_factor
-            # Sample noise that we'll add to the latents
-            noise = torch.randn_like(latents)
-            bsz = latents.shape[0]
-            # Sample a random timestep for each image
-            timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
-            timesteps = timesteps.long()
-            # Add noise to the latents according to the noise magnitude at each timestep
-            # (this is the forward diffusion process)
-            noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
-            # encode text
-            input_id = input_ids[k, :].unsqueeze(0)
-            encode_hidden_states = text_encoder(input_id)[0]
-            # Get the target for loss depending on the prediction type
-            if noise_scheduler.config.prediction_type == "epsilon":
-                target = noise
-            elif noise_scheduler.config.prediction_type == "v_prediction":
-                target = noise_scheduler.get_velocity(latents, noise, timesteps)
-            else:
-                raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
-            model_pred= unet(noisy_latents, timesteps, encode_hidden_states).sample
-            loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
-            if k == 1:
-                # calculate loss of class(prior)
-                loss *= args.prior_loss_weight
-            loss.backward()
-            if k == 1:
-                print(f"==loss - image index {instance_idx}, loss: {loss.detach().item() / args.prior_loss_weight}, prior")
-            else:
-                print(f"==loss - image index {instance_idx}, loss: {loss.detach().item()}, instance")
-                
-        params_to_clip = (
-                    itertools.chain(unet.parameters(), text_encoder.parameters())
-                    if args.train_text_encoder
-                    else unet.parameters()
-                )
-        torch.nn.utils.clip_grad_norm_(params_to_clip, 1.0, error_if_nonfinite=True)
-        optimizer.step()
-        optimizer.zero_grad()
+                random.seed(time.time())
+                instance_idx = random.randint(0, len(train_dataset)-1)
+                step_data = train_dataset[instance_idx]
+                pixel_values = torch.stack([step_data["instance_images"], step_data["class_images"]])
+                #print("pixel_values shape: {}".format(pixel_values.shape))
+                input_ids = torch.cat([step_data["instance_prompt_ids"], step_data["class_prompt_ids"]], dim=0).to(device)
+                for k in range(pixel_values.shape[0]):
+                    #calculate loss of instance and class seperately
+                    pixel_value = pixel_values[k, :].unsqueeze(0).to(device, dtype=weight_dtype)
+                    latents = vae.encode(pixel_value).latent_dist.sample().detach().clone()
+                    latents = latents * vae.config.scaling_factor
+                    # Sample noise that we'll add to the latents
+                    noise = torch.randn_like(latents)
+                    bsz = latents.shape[0]
+                    # Sample a random timestep for each image
+                    timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
+                    timesteps = timesteps.long()
+                    # Add noise to the latents according to the noise magnitude at each timestep
+                    # (this is the forward diffusion process)
+                    noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+                    # encode text
+                    input_id = input_ids[k, :].unsqueeze(0)
+                    encode_hidden_states = text_encoder(input_id)[0]
+                    # Get the target for loss depending on the prediction type
+                    if noise_scheduler.config.prediction_type == "epsilon":
+                        target = noise
+                    elif noise_scheduler.config.prediction_type == "v_prediction":
+                        target = noise_scheduler.get_velocity(latents, noise, timesteps)
+                    else:
+                        raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
+                    model_pred= unet(noisy_latents, timesteps, encode_hidden_states).sample
+                    loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                    if k == 1:
+                        # calculate loss of class(prior)
+                        loss *= args.prior_loss_weight
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
+                    if k == 1:
+                        print(f"==loss - image index {instance_idx}, loss: {loss.detach().item() / args.prior_loss_weight}, prior")
+                    else:
+                        print(f"==loss - image index {instance_idx}, loss: {loss.detach().item()}, instance")
+                        
+                params_to_clip = (
+                            itertools.chain(unet.parameters(), text_encoder.parameters())
+                            if args.train_text_encoder
+                            else unet.parameters()
+                        )
+                torch.nn.utils.clip_grad_norm_(params_to_clip, 1.0, error_if_nonfinite=True)
+                optimizer.step()
+                optimizer.zero_grad()
+    else:
+        for step in range(args.max_f_train_steps):
+            unet.train()
+            text_encoder.train()
+
+            random.seed(time.time())
+            instance_idx = random.randint(0, len(train_dataset)-1)
+            step_data = train_dataset[instance_idx]
+            pixel_values = torch.stack([step_data["instance_images"], step_data["class_images"]])
+            #print("pixel_values shape: {}".format(pixel_values.shape))
+            input_ids = torch.cat([step_data["instance_prompt_ids"], step_data["class_prompt_ids"]], dim=0).to(device)
+            for k in range(pixel_values.shape[0]):
+                #calculate loss of instance and class seperately
+                pixel_value = pixel_values[k, :].unsqueeze(0).to(device, dtype=weight_dtype)
+                latents = vae.encode(pixel_value).latent_dist.sample().detach().clone()
+                latents = latents * vae.config.scaling_factor
+                # Sample noise that we'll add to the latents
+                noise = torch.randn_like(latents)
+                bsz = latents.shape[0]
+                # Sample a random timestep for each image
+                timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
+                timesteps = timesteps.long()
+                # Add noise to the latents according to the noise magnitude at each timestep
+                # (this is the forward diffusion process)
+                noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+                # encode text
+                input_id = input_ids[k, :].unsqueeze(0)
+                encode_hidden_states = text_encoder(input_id)[0]
+                # Get the target for loss depending on the prediction type
+                if noise_scheduler.config.prediction_type == "epsilon":
+                    target = noise
+                elif noise_scheduler.config.prediction_type == "v_prediction":
+                    target = noise_scheduler.get_velocity(latents, noise, timesteps)
+                else:
+                    raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
+                model_pred= unet(noisy_latents, timesteps, encode_hidden_states).sample
+                loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                if k == 1:
+                    # calculate loss of class(prior)
+                    loss *= args.prior_loss_weight
+                loss.backward()
+                if k == 1:
+                    print(f"==loss - image index {instance_idx}, loss: {loss.detach().item() / args.prior_loss_weight}, prior")
+                else:
+                    print(f"==loss - image index {instance_idx}, loss: {loss.detach().item()}, instance")
+                    
+            params_to_clip = (
+                        itertools.chain(unet.parameters(), text_encoder.parameters())
+                        if args.train_text_encoder
+                        else unet.parameters()
+                    )
+            torch.nn.utils.clip_grad_norm_(params_to_clip, 1.0, error_if_nonfinite=True)
+            optimizer.step()
+            optimizer.zero_grad()
     
     return [unet, text_encoder]
 
@@ -706,8 +529,6 @@ def pgd_attack(
 
     unet, text_encoder = models
     device = accelerator.device
-    if args.constraint == 'lpips':
-        lpips_vgg = lpips.LPIPS(net='vgg')
 
     vae.to(device, dtype=weight_dtype)
     text_encoder.to(device, dtype=weight_dtype)
@@ -792,30 +613,13 @@ def pgd_attack(
             gc_latents.backward(gradient=grads)
             
             if step % args.gradient_accumulation_steps == args.gradient_accumulation_steps - 1:
-                
-                if args.constraint == 'eps':
-                    alpha = args.pgd_alpha
-                    adv_images = perturbed_image + alpha * perturbed_image.grad.sign()
+                alpha = args.pgd_alpha
+                adv_images = perturbed_image + alpha * perturbed_image.grad.sign()
+                eps = args.pgd_eps
+                eta = torch.clamp(adv_images - original_image, min=-eps, max=+eps)
+                perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
+                perturbed_image.requires_grad = True
 
-                    # hard constraint
-                    eps = args.pgd_eps
-                    eta = torch.clamp(adv_images - original_image, min=-eps, max=+eps)
-                    perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
-                    perturbed_image.requires_grad = True
-                elif args.constraint == 'lpips':
-                    # compute reg loss
-                    lpips_distance = lpips_vgg(perturbed_image, original_image)
-                    reg_loss = args.lpips_weight * torch.max(lpips_distance - args.lpips_bound, 0)[0].squeeze()
-                    reg_loss.backward()
-
-                    alpha = args.pgd_alpha
-                    adv_images = perturbed_image + alpha * perturbed_image.grad.sign()
-
-                    eta = adv_images - original_image
-                    perturbed_image = torch.clamp(original_image + eta, min=-1, max=+1).detach_()
-                    perturbed_image.requires_grad = True
-                else:
-                    raise NotImplementedError
                     
             #print(f"PGD loss - step {step}, loss: {loss.detach().item()}")
 
@@ -1075,80 +879,12 @@ def main(args):
                     assert perturbation.shape == ori_img.shape
 
                     perturbed_img =  (ori_img + perturbation).clip(0, 255).astype(np.uint8)
-                    # print("perturbation: {}, ori: {}, res: {}".format(
-                    #     perturbed_img_duzzy[:2, :2, :], ori_img_duzzy[:2, :2, :], perturbed_img_duzzy[:2, :2, :]))
                     Image.fromarray(perturbed_img).save(save_path)
 
 
                 print(f"==Saved misted image to {save_path}, size: {img_size}==")
             # print(f"Saved noise at step {i+1} to {save_folder}")
             del noised_imgs
-
-def update_args_with_config(args, config):
-    '''
-        Update the default augments in args with config assigned by users
-        args list:
-            eps: 
-            max train epoch:
-            data path:
-            class path:
-            output path:
-            device: 
-                gpu normal,
-                gpu low vram,
-                cpu,
-            mode:
-                lunet, full
-    '''
-
-    args = parse_args()
-    eps, device, mode, resize, data_path, output_path, model_path, class_path, prompt, \
-        class_prompt, max_train_steps, max_f_train_steps, max_adv_train_steps, lora_lr, pgd_lr, \
-            rank, prior_loss_weight, fused_weight, constraint_mode, lpips_bound, lpips_weight = config
-    args.pgd_eps = float(eps)/255.0
-    if device == 'cpu':
-        args.cuda, args.low_vram_mode = False, False
-    else:
-        args.cuda, args.low_vram_mode = True, True
-    # if precision == 'bfloat16':
-    #     args.mixed_precision = 'bf16'
-    # else:
-    #     args.mixed_precision = 'fp16'
-    if mode == 'Mode 1':
-        args.mode = 'lunet'
-    elif mode == 'Mode 2':
-        args.mode = 'fused'
-    elif mode == 'Mode 3':
-        args.mode = 'anti-db'
-    if resize:
-        args.resize = True
-
-    assert os.path.exists(data_path) and os.path.exists(output_path)
-    args.instance_data_dir = data_path
-    args.output_dir = output_path
-    args.pretrained_model_name_or_path = model_path
-    args.class_data_dir = class_path
-    args.instance_prompt = prompt
-
-    args.class_prompt = class_prompt
-    args.max_train_steps = max_train_steps
-    args.max_f_train_steps = max_f_train_steps
-    args.max_adv_train_steps = max_adv_train_steps
-    args.learning_rate = lora_lr
-    args.pgd_alpha = pgd_lr
-    args.rank = rank
-    args.prior_loss_weight = prior_loss_weight
-    args.fused_weight = fused_weight
-
-    if constraint_mode == 'LPIPS':
-        args.constraint = 'lpips'
-    else:
-        args.constraint = 'eps'
-    args.lpips_bound = lpips_bound
-    args.lpips_weight = lpips_weight
-
-    return args
-
 
 if __name__ == "__main__":
     args = parse_args()

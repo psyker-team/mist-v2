@@ -20,5 +20,4 @@ cache
 xformers
 colorama
 torchmetrics
-lpips
 --extra-index-url https://download.pytorch.org/whl/cu118
