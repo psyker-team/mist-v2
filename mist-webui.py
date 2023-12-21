@@ -89,11 +89,11 @@ if __name__ == "__main__":
             gr.Image("MIST_logo.png", show_label=False)
             with gr.Row():
                 with gr.Column():
-                    eps = gr.Slider(0, 32, step=1, value=10, label='Strength',
+                    eps = gr.Slider(0, 32, step=1, value=12, label='Strength',
                                     info="Larger strength results in stronger but more visible defense.")
                     device = gr.Radio(["cpu", "gpu"], value="gpu", label="Device",
                                     info="If you do not have good GPUs on your PC, choose 'CPU'.")
-                    resize = gr.Checkbox(value=True, label="Resizing the output image to the original resolution")
+                    resize = gr.Checkbox(value=False, label="Resizing the output image to the original resolution")
                     mode = gr.Radio(["Mode 1", "Mode 2", "Mode 3"], value="Mode 1", label="Mode",
                                     info="Two modes both work with different visualization.")
                     mixed_precision = gr.Radio(["fp16", "bf16"], value="bf16", label="Precision",
