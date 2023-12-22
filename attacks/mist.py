@@ -303,6 +303,7 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
 def train_one_epoch(
     args,
     accelerator,
+    epoch,
     models,
     tokenizer,
     noise_scheduler,
@@ -334,33 +335,44 @@ def train_one_epoch(
     if args.low_vram_mode:
         set_use_memory_efficient_attention_xformers(unet,True)
 
-    # this is only done at the first epoch
-    unet_lora_params, _ = inject_trainable_lora(
-        unet, r=args.lora_rank, loras=args.resume_unet
-    )
-    if weight_dtype == torch.float16:
-        for _up, _down in extract_lora_ups_down(
-                unet
-            ):
-                _up.to(dtype=torch.float32)
-                _down.to(dtype=torch.float32)
-        # for params in unet_lora_params:
-        #     print(params, type(params))
-        #     params.to(dtype=torch.float32)
-    if args.train_text_encoder:
-        text_encoder_lora_params, _ = inject_trainable_lora(
-            text_encoder,
-            target_replace_module=["CLIPAttention"],
-            r=args.lora_rank,
+    if epoch == 0:
+        # this is only done at the first epoch
+        unet_lora_params, _ = inject_trainable_lora(
+            unet, r=args.lora_rank, loras=args.resume_unet
         )
         if weight_dtype == torch.float16:
-            # for params in text_encoder_lora_params:
-            #     params.to(dtype=torch.float32)
             for _up, _down in extract_lora_ups_down(
-                text_encoder, target_replace_module=["CLIPAttention"]
-            ):
-                _up.to(dtype=torch.float32)
-                _down.to(dtype=torch.float32)
+                    unet
+                ):
+                    _up.to(dtype=torch.float32)
+                    _down.to(dtype=torch.float32)
+            # for params in unet_lora_params:
+            #     print(params, type(params))
+            #     params.to(dtype=torch.float32)
+        if args.train_text_encoder:
+            text_encoder_lora_params, _ = inject_trainable_lora(
+                text_encoder,
+                target_replace_module=["CLIPAttention"],
+                r=args.lora_rank,
+            )
+            if weight_dtype == torch.float16:
+                # for params in text_encoder_lora_params:
+                #     params.to(dtype=torch.float32)
+                for _up, _down in extract_lora_ups_down(
+                    text_encoder, target_replace_module=["CLIPAttention"]
+                ):
+                    _up.to(dtype=torch.float32)
+                    _down.to(dtype=torch.float32)
+    else:
+        unet_lora_params = [] 
+        for _up, _down in extract_lora_ups_down(unet):
+            unet_lora_params.append(_up.weight)
+            unet_lora_params.append(_down.weight)
+        if args.train_text_encoder:
+            text_encoder_lora_params = []
+            for _up, _down in extract_lora_ups_down(text_encoder, target_replace_module=["CLIPAttention"]):
+                text_encoder_lora_params.append(_up.weight)
+                text_encoder_lora_params.append(_down.weight)
     
     # build the optimizer
     optimizer_class = torch.optim.AdamW
@@ -827,6 +839,7 @@ def main(args):
         f = train_one_epoch(
             args,
             accelerator,
+            i,
             f,
             tokenizer,
             noise_scheduler,
