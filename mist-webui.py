@@ -1,5 +1,5 @@
 import gradio as gr
-from attacks.mist import update_args_with_config, main
+from attacks.mist import main
 import subprocess
 
 '''
