@@ -30,7 +30,7 @@ def run_mist(eps, device, mode, resize, data_path, output_path, model_path, clas
         command.append("--cpu")      
 
     # Append each parameter to the command list
-    command.append("attacks/mist_dev.py")
+    command.append("attacks/mist.py")
     command.append("--pgd_eps")
     command.append(str(float(eps))/255.0)
     if device == 'gpu':
