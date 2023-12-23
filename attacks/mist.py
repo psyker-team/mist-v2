@@ -362,15 +362,17 @@ def train_one_epoch(
     else:
         unet_lora_params = [] 
         for _up, _down in extract_lora_ups_down(unet):
-            _up.to(dtype=torch.float32)
-            _down.to(dtype=torch.float32)
+            if weight_dtype == torch.float16:
+                _up.to(dtype=torch.float32)
+                _down.to(dtype=torch.float32)
             unet_lora_params.append(_up.parameters())
             unet_lora_params.append(_down.parameters())
         if args.train_text_encoder:
             text_encoder_lora_params = []
             for _up, _down in extract_lora_ups_down(text_encoder, target_replace_module=["CLIPAttention"]):
-                _up.to(dtype=torch.float32)
-                _down.to(dtype=torch.float32)
+                if weight_dtype == torch.float16:
+                    _up.to(dtype=torch.float32)
+                    _down.to(dtype=torch.float32)
                 text_encoder_lora_params.append(_up.parameters())
                 text_encoder_lora_params.append(_down.parameters())
     
