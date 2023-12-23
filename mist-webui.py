@@ -32,7 +32,7 @@ def run_mist(eps, device, mode, resize, data_path, output_path, model_path, clas
     # Append each parameter to the command list
     command.append("attacks/mist.py")
     command.append("--pgd_eps")
-    command.append(str(float(eps))/255.0)
+    command.append(str(float(eps)/255.0))
     if device == 'gpu':
         command.append("--cuda")
         command.append("--low_vram_mode")
