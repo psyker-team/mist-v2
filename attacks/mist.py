@@ -328,10 +328,13 @@ def train_one_epoch(
 
     # prepare models & inject lora layers
     unet, text_encoder = copy.deepcopy(models[0]), copy.deepcopy(models[1])
-    vae.to(device, dtype=weight_dtype)
+    vae.to(device)
     vae.requires_grad_(False)
-    text_encoder.to(device, dtype=weight_dtype)
-    unet.to(device, dtype=weight_dtype)
+    text_encoder.to(device)
+    unet.to(device)
+    vae.to(dtype=weight_dtype)
+    text_encoder.to(dtype=weight_dtype)
+    unet.to(dtype=weight_dtype)
     if args.low_vram_mode:
         set_use_memory_efficient_attention_xformers(unet,True)
 
@@ -341,14 +344,9 @@ def train_one_epoch(
             unet, r=args.lora_rank, loras=args.resume_unet
         )
         if weight_dtype == torch.float16:
-            for _up, _down in extract_lora_ups_down(
-                    unet
-                ):
+            for _up, _down in extract_lora_ups_down(unet):
                     _up.to(dtype=torch.float32)
                     _down.to(dtype=torch.float32)
-            # for params in unet_lora_params:
-            #     print(params, type(params))
-            #     params.to(dtype=torch.float32)
         if args.train_text_encoder:
             text_encoder_lora_params, _ = inject_trainable_lora(
                 text_encoder,
@@ -356,8 +354,6 @@ def train_one_epoch(
                 r=args.lora_rank,
             )
             if weight_dtype == torch.float16:
-                # for params in text_encoder_lora_params:
-                #     params.to(dtype=torch.float32)
                 for _up, _down in extract_lora_ups_down(
                     text_encoder, target_replace_module=["CLIPAttention"]
                 ):
@@ -366,13 +362,17 @@ def train_one_epoch(
     else:
         unet_lora_params = [] 
         for _up, _down in extract_lora_ups_down(unet):
-            unet_lora_params.append(_up.weight)
-            unet_lora_params.append(_down.weight)
+            _up.to(dtype=torch.float32)
+            _down.to(dtype=torch.float32)
+            unet_lora_params.append(_up.parameters())
+            unet_lora_params.append(_down.parameters())
         if args.train_text_encoder:
             text_encoder_lora_params = []
             for _up, _down in extract_lora_ups_down(text_encoder, target_replace_module=["CLIPAttention"]):
-                text_encoder_lora_params.append(_up.weight)
-                text_encoder_lora_params.append(_down.weight)
+                _up.to(dtype=torch.float32)
+                _down.to(dtype=torch.float32)
+                text_encoder_lora_params.append(_up.parameters())
+                text_encoder_lora_params.append(_down.parameters())
     
     # build the optimizer
     optimizer_class = torch.optim.AdamW
@@ -449,8 +449,6 @@ def train_one_epoch(
                         # calculate loss of class(prior)
                         loss *= args.prior_loss_weight
                     scaler.scale(loss).backward()
-                    scaler.step(optimizer)
-                    scaler.update()
                     if k == 1:
                         print(f"==loss - image index {instance_idx}, loss: {loss.detach().item() / args.prior_loss_weight}, prior")
                     else:
@@ -462,8 +460,8 @@ def train_one_epoch(
                             else unet.parameters()
                         )
                 torch.nn.utils.clip_grad_norm_(params_to_clip, 1.0, error_if_nonfinite=True)
-                optimizer.step()
-                optimizer.zero_grad()
+                scaler.step(optimizer)
+                scaler.update()
     else:
         for step in range(args.max_f_train_steps):
             unet.train()
