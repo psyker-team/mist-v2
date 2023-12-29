@@ -273,7 +273,7 @@ def load_data(data_dir, size=512, center_crop=True) -> torch.Tensor:
     images, prompts = [], []
     num_image = 0
     for filename in os.listdir(data_dir):
-        if filename.endswith(".png") or filename.endswith(".jpg") or filename.endswith(".jpeg"):
+        if filename.lower().endswith(".png") or filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
             file_path = os.path.join(data_dir, filename)
             images.append(Image.open(file_path).convert("RGB"))
             num_image += 1
@@ -869,7 +869,7 @@ def main(args):
             origin_imgs = original_data.detach().cpu()
             img_names = []
             for filename in os.listdir(args.instance_data_dir):
-                if filename.endswith(".png") or filename.endswith(".jpg") or filename.endswith(".jpeg"):
+                if filename.lower().endswith(".png") or filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
                     img_names.append(str(filename))
             for img_pixel, ori_img_pixel, img_name, img_size in zip(noised_imgs, origin_imgs, img_names, data_sizes):
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
