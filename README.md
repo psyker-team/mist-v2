@@ -211,7 +211,16 @@ If you find our work valuable and utilize it, we kindly request that you cite ou
 }
 ```
 
-Our repository also refers to following papers:
+Mist-v2 also benefits to following papers. Please cite them if you find our repo useful.
+
+```
+@article{xue2023toward,
+  title={Toward effective protection against diffusion based mimicry through score distillation},
+  author={Xue, Haotian and Liang, Chumeng and Wu, Xiaoyu and Chen, Yongxin},
+  journal={arXiv preprint arXiv:2311.12832},
+  year={2023}
+}
+```
 
 ```
 @inproceedings{van2023anti,
