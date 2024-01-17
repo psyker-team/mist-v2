@@ -196,7 +196,7 @@ Our paper is still in working. We are trying to reveal the mechanism behind our 
 
 ## License
 
-This project is licensed under the [GPL-3.0 license](https://github.com/mist-project/mist/blob/main/LICENSE). 
+This project is licensed under the Apache-2.0 license. Additionally, we forbid any authorized commercial use. 
 
  
 ## Citation
