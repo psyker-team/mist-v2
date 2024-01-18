@@ -9,7 +9,7 @@
 [![project page](https://img.shields.io/badge/homepage-mist--project.io-blue.svg)](https://mist-project.github.io/index_en.html)
 [![arXiv](https://img.shields.io/badge/arXiv-2310.04687-red.svg)](https://arxiv.org/abs/2310.04687)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1k5tLNsWTTAkOlkl5d9llf93bJ6csvMuZ?usp=sharing)
-[![One-click Package](https://img.shields.io/badge/Google%20Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/drive/folders/1lpfml2cXDHWpJdKx6tL1wisnr8lKOSSr?usp=drive_link)
+[![One-click Package](https://img.shields.io/badge/Google%20Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/drive/folders/1vg8oK2BUOla5adaJcFYx5QMq0-MoP8kk?usp=drive_link)
 <!-- 
 [![document](https://img.shields.io/badge/document-passing-light_green.svg)](https://arxiv.org/abs/2310.04687)
 -->
