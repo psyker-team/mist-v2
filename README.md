@@ -47,14 +47,8 @@
 
 **2022/12/11**: Mist V2 released.  -->
 
-## Main Features
-- Enhanced protection against AI-for-Art applications like Lora and SDEdit
-- Imperceptible noise.
-- 3-5 minutes processing with only 6GB of GPU memory in most cases. CPU processing supported.
-- Resilience against denoising methods.
 
-
-## About Mist
+## What is Mist
 Mist is a powerful image preprocessing tool designed for the purpose of protecting the style and content of
 images from being mimicked by state-of-the-art AI-for-Art applications. By adding watermarks to the images, Mist renders them unrecognizable and inmitable for the
 models employed by AI-for-Art applications. Attempts by AI-for-Art applications to mimic these Misted images
@@ -67,18 +61,37 @@ will be ineffective, and the output image of such mimicry will be scrambled and 
 
 In Mist V2, we have enhanced its effectiveness against a wider range of AI-for-Art applications, particularly excelling with Lora. Mist V2 achieves robust defense with even more discreet watermarks compared to [Mist V1](https://github.com/mist-project/mist). Additionally, Mist V2 introduces support for CPU processing and can efficiently run on GPUs with as little as 6GB of memory in most cases.
 
+## Main Features
+- Enhanced protection against AI-for-Art applications like Lora and SDEdit
+- Imperceptible noise.
+- 3-5 minutes processing with only 6GB of GPU memory in most cases. CPU processing supported.
+- Resilience against denoising methods.
+
 
  <!-- For more details, refer to our [documentation](https://arxiv.org/abs/2310.04687). -->
 
 
 
-
-
-
-
 ## Quick Start
 
+### For end users (artists, photographers, designers,...)
+
+We provide two approaches for you to deploy Mist-v2:
+
+- **Free version for local deployment**: If you have a Nvidia GPU with more than 6GB VRAM, you can download our free version pack
+(i.e. no need for installation, runnable after downloading) from [Google Drive](https://drive.google.com/drive/folders/1vg8oK2BUOla5adaJcFYx5QMq0-MoP8kk?usp=drive_link). This is the safest and most flexible way to deploy and run Mist-v2.
+
+- **Colab Notebook**: If you does not own compatible Nvidia GPUs, you can run Mist with our [Colab Notebook](https://colab.research.google.com/drive/1k5tLNsWTTAkOlkl5d9llf93bJ6csvMuZ?usp=sharing) on free GPU resources provided by Google (Thank you Google). The Notebook is self-instructed. Note that you cannot Mist too many images (e.g. 100 images) once with Colab because Google limits single-time GPU usage to about 12 hours. You can Mist them separately on several different days.
+
+Both approaches provide a Graphic User Interface (GUI) with the help of [Gradio](https://www.gradio.app/). We also write down a guideline for using GUI.
+
 ### Environment
+
+<details><summary>Does work</summary>
+
+[hi](https://hello.ca)
+
+</details>
 
 **Preliminaries:** To run this repository, please have [Anaconda](https://pytorch.org/) installed in your work station. The GPU version of Mist requires a NVIDIA GPU in [Ampere](https://en.wikipedia.org/wiki/Ampere_(microarchitecture)) or more advanced architecture with more than 6GB VRAM. You can also try the CPU version 
 in a moderate running speed.
