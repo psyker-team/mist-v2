@@ -7,9 +7,10 @@
 
 
 [![project page](https://img.shields.io/badge/homepage-mist--project.io-blue.svg)](https://mist-project.github.io/index_en.html)
-[![arXiv](https://img.shields.io/badge/arXiv-2310.04687-red.svg)](https://arxiv.org/abs/2310.04687)
+<!-- [![arXiv](https://img.shields.io/badge/arXiv-2310.04687-red.svg)](https://arxiv.org/abs/2310.04687) -->
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1k5tLNsWTTAkOlkl5d9llf93bJ6csvMuZ?usp=sharing)
-[![One-click Package](https://img.shields.io/badge/Google%20Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/drive/folders/1vg8oK2BUOla5adaJcFYx5QMq0-MoP8kk?usp=drive_link)
+[![One-click Package](https://img.shields.io/badge/-Google_Drive-1A73E8.svg?style=flat&logo=Google-Drive&logoColor=white)](https://drive.google.com/drive/folders/1vg8oK2BUOla5adaJcFYx5QMq0-MoP8kk?usp=drive_link)
+
 <!-- 
 [![document](https://img.shields.io/badge/document-passing-light_green.svg)](https://arxiv.org/abs/2310.04687)
 -->
@@ -59,9 +60,7 @@ will be ineffective, and the output image of such mimicry will be scrambled and 
 <img  src="assets/effect_show.png">
 </p>
 
-In Mist V2, we have enhanced its effectiveness against a wider range of AI-for-Art applications, particularly excelling with Lora. Mist V2 achieves robust defense with even more discreet watermarks compared to [Mist V1](https://github.com/mist-project/mist). Additionally, Mist V2 introduces support for CPU processing and can efficiently run on GPUs with as little as 6GB of memory in most cases.
-
-## Main Features
+**Updates of version 2.1.0**: 
 - Enhanced protection against AI-for-Art applications like Lora and SDEdit
 - Imperceptible noise.
 - 3-5 minutes processing with only 6GB of GPU memory in most cases. CPU processing supported.
@@ -83,15 +82,9 @@ We provide two approaches for you to deploy Mist-v2:
 
 - **Colab Notebook**: If you does not own compatible Nvidia GPUs, you can run Mist with our [Colab Notebook](https://colab.research.google.com/drive/1k5tLNsWTTAkOlkl5d9llf93bJ6csvMuZ?usp=sharing) on free GPU resources provided by Google (Thank you Google). The Notebook is self-instructed. Note that you cannot Mist too many images (e.g. 100 images) once with Colab because Google limits single-time GPU usage to about 12 hours. You can Mist them separately on several different days.
 
-Both approaches provide a Graphic User Interface (GUI) with the help of [Gradio](https://www.gradio.app/). We also write down a guideline for using GUI.
+Both approaches provide a Graphic User Interface (GUI) with the help of [Gradio](https://www.gradio.app/). We also write down a [guideline](docs/GUI.md) for using our GUI.
 
 ### Environment
-
-<details><summary>Does work</summary>
-
-[hi](https://hello.ca)
-
-</details>
 
 **Preliminaries:** To run this repository, please have [Anaconda](https://pytorch.org/) installed in your work station. The GPU version of Mist requires a NVIDIA GPU in [Ampere](https://en.wikipedia.org/wiki/Ampere_(microarchitecture)) or more advanced architecture with more than 6GB VRAM. You can also try the CPU version 
 in a moderate running speed.
@@ -123,7 +116,8 @@ Run Mist V2 in the default setup on CPU:
 accelerate launch attacks/mist.py --instance_data_dir $INSTANCE_DIR --output_dir $OUTPUT_DIR --class_data_dir $CLASS_DATA_DIR --instance_prompt $PROMPT --class_prompt $CLASS_PROMPT --mixed_precision bf16
 ```
 
-The parameters are demonstrated in the following table:
+<details><summary> (Click-to-expand) Detailed demonstration of the parameters:  
+ </summary>
 
 | Parameter       | Explanation                                                                                |
 | --------------- | ------------------------------------------------------------------------------------------ |
@@ -138,6 +132,7 @@ Here is a case command to run Mist V2 on GPU:
 ```bash
 accelerate launch attacks/mist.py --cuda --low_vram_mode --instance_data_dir data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a photo of a misted person, high quality, masterpiece" --class_prompt "a photo of a person, high quality, masterpiece" --mixed_precision bf16
 ```
+</details>
 
 We also provide a WebUI with the help of [Gradio](https://www.gradio.app/). To boost the WebUI, run:
 
@@ -147,7 +142,8 @@ python mist-webui.py
 
 ### Evaluation
 
-We provide a simple pipeline to evaluate the output adversarial examples (only for GPU users). 
+<details><summary> This repo provides a simple pipeline to evaluate the output adversarial examples. </summary>
+
 Basically, this pipeline trains a LoRA on the adversarial examples and samples images with the LoRA. 
 Note that our adversarial examples may induce LoRA to output images with NSFW contents 
 (for example, chaotic texture). As stated, this is to prevent LoRA training on unauthorized image data. To evaluate the effectiveness of our method, we disable the safety checker in the LoRA sampling script. Following is the instruction to run the pipeline.
@@ -158,8 +154,7 @@ First, train a LoRA on the output adversarial examples.
 accelerate launch eval/train_dreambooth_lora_15.py --instance_data_dir=$LORA_INPUT_DIR --output_dir=$LORA_OUTPUT_DIR --class_data_dir=$LORA_CLASS_DIR --instance_prompt $LORA_PROMPT --class_prompt $LORA_CLASS_PROMPT --resolution=512 --train_batch_size=1 --learning_rate=1e-4 --scale_lr --max_train_steps=2000
 ```
 
-The parameters are demonstrated in the following table:
-  
+Detailed demonstration of the parameters:  
 
 | Parameter          | Explanation                                                                                                |
 | ------------------ | ---------------------------------------------------------------------------------------------------------- |
@@ -182,6 +177,8 @@ LORA_OUTPUT_DIR = [The value of $LORA_OUTPUT_DIR]
 ```
 
 Finally, run the second block to see the output and evaluate the performance of Mist.
+</details>
+
 
 
 ## A Glimpse to Methodology
@@ -190,7 +187,7 @@ Mist V2 works by adversarially attacking generative diffusion models. Basically,
 
 $$ \underset{x'}{min} \mathbb{E} {(z_0', \epsilon,t)}  \Vert \epsilon_\theta(z'_t(z'_0,\epsilon),t)-z_0^T\Vert^2_2, \Vert x'-x\Vert\leq\zeta$$
 
-We demonstrate the notation in the following table.
+<details><summary> We demonstrate the notation in the following table. </summary>
 
 | Variable          | Explanation                                                      |
 | ----------------- | ---------------------------------------------------------------- |
@@ -202,10 +199,12 @@ We demonstrate the notation in the following table.
 | $\epsilon_\theta$ | The noise predictor (U-Net) in the diffusion model               |
 | $\zeta$           | The budget of adversarial noise                                  |
 
+</details>
 
-Intuitively, we find that pushing the output of the U-Net in the diffusion model to the 0th timestep 
-latent variable of a target image can effectively confuse the diffusion model. This abstracts the 
-aforementioned objective of Mist V2.
+
+Intuitively, Mist-v2 guides the gradient predicted by the diffusion model to a fixed and directed error. When finetuned on the Misted
+images, the model tries to fix this error by adding a fixed counteracting bias to its prediction. This bias will be adopted as parts of
+the pattern learned by finetuning. The finetuned model will also add the fixed bias in their sampling process, resulting in chaotic texture in the output images. 
 
 Our paper is still in working. We are trying to reveal the mechanism behind our method in the paper. Despite of this, you can access [Arxiv]() to view the first draft of our paper.
 
@@ -215,18 +214,10 @@ This project is licensed under the Apache-2.0 license. Additionally, we forbid a
 
  
 ## Citation
-If you find our work valuable and utilize it, we kindly request that you cite our paper.
 
-```
-@article{zheng2023understanding,
-  title={Understanding and Improving Adversarial Attacks on Latent Diffusion Model},
-  author={Zheng, Boyang and Liang, Chumeng and Wu, Xiaoyu and Liu, Yan},
-  journal={arXiv preprint arXiv:2310.04687},
-  year={2023}
-}
-```
+Our paper is still in progress. If you find this repo useful, please keep an eye to our updates. We will release the paper as it is available for public release.
 
-Mist-v2 also benefits to following papers. Please cite them if you find our repo useful.
+Additionally, Mist-v2 benefits from the following papers. Their ideas and results inspire us to dive into the mechanism why adversarial attacks work on latent diffusion models. We kindly suggest you to cite them if possible. 
 
 ```
 @article{xue2023toward,
@@ -253,6 +244,17 @@ Mist-v2 also benefits to following papers. Please cite them if you find our repo
   author={Liang, Chumeng and Wu, Xiaoyu},
   journal={arXiv preprint arXiv:2305.12683},
   year={2023}
+}
+```
+
+```
+@inproceedings{liang2023adversarial,
+  title={Adversarial example does good: Preventing painting imitation from diffusion models via adversarial examples},
+  author={Liang, Chumeng and Wu, Xiaoyu and Hua, Yang and Zhang, Jiaru and Xue, Yiming and Song, Tao and Xue, Zhengui and Ma, Ruhui and Guan, Haibing},
+  booktitle={International Conference on Machine Learning},
+  pages={20763--20786},
+  year={2023},
+  organization={PMLR}
 }
 ```
 
