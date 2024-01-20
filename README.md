@@ -116,8 +116,9 @@ Run Mist V2 in the default setup on CPU:
 accelerate launch attacks/mist.py --instance_data_dir $INSTANCE_DIR --output_dir $OUTPUT_DIR --class_data_dir $CLASS_DATA_DIR --instance_prompt $PROMPT --class_prompt $CLASS_PROMPT --mixed_precision bf16
 ```
 
-<details><summary> (Click-to-expand) Detailed demonstration of the parameters:  
+<details><summary> **(click-to-expand)** Detailed demonstration of the parameters:  
  </summary>
+
 
 | Parameter       | Explanation                                                                                |
 | --------------- | ------------------------------------------------------------------------------------------ |
@@ -142,7 +143,7 @@ python mist-webui.py
 
 ### Evaluation
 
-<details><summary> This repo provides a simple pipeline to evaluate the output adversarial examples. </summary>
+<details><summary> (click-to-expand) This repo provides a simple pipeline to evaluate the output adversarial examples. </summary>
 
 Basically, this pipeline trains a LoRA on the adversarial examples and samples images with the LoRA. 
 Note that our adversarial examples may induce LoRA to output images with NSFW contents 
@@ -155,6 +156,7 @@ accelerate launch eval/train_dreambooth_lora_15.py --instance_data_dir=$LORA_INP
 ```
 
 Detailed demonstration of the parameters:  
+
 
 | Parameter          | Explanation                                                                                                |
 | ------------------ | ---------------------------------------------------------------------------------------------------------- |
@@ -187,7 +189,8 @@ Mist V2 works by adversarially attacking generative diffusion models. Basically,
 
 $$ \underset{x'}{min} \mathbb{E} {(z_0', \epsilon,t)}  \Vert \epsilon_\theta(z'_t(z'_0,\epsilon),t)-z_0^T\Vert^2_2, \Vert x'-x\Vert\leq\zeta$$
 
-<details><summary> We demonstrate the notation in the following table. </summary>
+<details><summary> (click-to-expand) We demonstrate the notation in the following table. </summary>
+
 
 | Variable          | Explanation                                                      |
 | ----------------- | ---------------------------------------------------------------- |
