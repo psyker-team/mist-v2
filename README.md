@@ -189,7 +189,7 @@ Finally, run the second block to see the output and evaluate the performance of 
 - [x] Mist-v2 release (12/15/2023)
 - [x] Mist-v2 free version (1/13/2024)
 - [x] Mist-v2 Colab Notebook (1/18/2024)
-- [ ] Mist-v2 WebUI
+- [ ] Mist-v2 WebUI: Misting images online, open to everyone with human artists verification)
   - [ ] Appling for free GPU resources
   - [ ] Implementing the web service
 
