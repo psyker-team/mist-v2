@@ -225,7 +225,6 @@ Intuitively, Mist-v2 guides the gradient predicted by the diffusion model to a f
 images, the model tries to fix this error by adding a fixed counteracting bias to its prediction. This bias will be adopted as parts of
 the pattern learned by finetuning. The finetuned model will also add the fixed bias in their sampling process, resulting in chaotic texture in the output images. 
 
-Our paper is still in working. We are trying to reveal the mechanism behind our method in the paper. Despite of this, you can access [Arxiv]() to view the first draft of our paper.
 
 ## License
 
