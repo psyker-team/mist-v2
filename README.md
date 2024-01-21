@@ -239,6 +239,17 @@ Our paper is still in progress. If you find this repo useful, please keep an eye
 Additionally, Mist-v2 benefits from the following papers. Their ideas and results inspire us to dive into the mechanism why adversarial attacks work on latent diffusion models. We kindly suggest you to cite them if possible. 
 
 ```
+@inproceedings{liang2023adversarial,
+  title={Adversarial example does good: Preventing painting imitation from diffusion models via adversarial examples},
+  author={Liang, Chumeng and Wu, Xiaoyu and Hua, Yang and Zhang, Jiaru and Xue, Yiming and Song, Tao and Xue, Zhengui and Ma, Ruhui and Guan, Haibing},
+  booktitle={International Conference on Machine Learning},
+  pages={20763--20786},
+  year={2023},
+  organization={PMLR}
+}
+```
+
+```
 @article{xue2023toward,
   title={Toward effective protection against diffusion based mimicry through score distillation},
   author={Xue, Haotian and Liang, Chumeng and Wu, Xiaoyu and Chen, Yongxin},
@@ -266,16 +277,7 @@ Additionally, Mist-v2 benefits from the following papers. Their ideas and result
 }
 ```
 
-```
-@inproceedings{liang2023adversarial,
-  title={Adversarial example does good: Preventing painting imitation from diffusion models via adversarial examples},
-  author={Liang, Chumeng and Wu, Xiaoyu and Hua, Yang and Zhang, Jiaru and Xue, Yiming and Song, Tao and Xue, Zhengui and Ma, Ruhui and Guan, Haibing},
-  booktitle={International Conference on Machine Learning},
-  pages={20763--20786},
-  year={2023},
-  organization={PMLR}
-}
-```
+
 
 
 
