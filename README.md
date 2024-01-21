@@ -194,6 +194,11 @@ Finally, run the second block to see the output and evaluate the performance of 
   - [ ] Implementing the web service
 
 
+## Contribution & Contact
+
+Mist is an open-source project and we sincerely welcome contributions. Apart from Mist, we are broadly interested in the ethics, copyright, trustworth, and privacy concerns of new-generation generative AI. If you have some ideas on these topics, feel free to contact us through our e-mail: [mist202304@gmail.com](mist202304@gmail.com). 
+
+
 ## A Glimpse to Methodology
 
 Our paper is still in progress so that we provide a glimpse to our methodology here. Mist V2 works by adversarially attacking generative diffusion models. Basically, the attacking is an optimization over the following objective:
