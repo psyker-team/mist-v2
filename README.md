@@ -194,9 +194,9 @@ Finally, run the second block to see the output and evaluate the performance of 
   - [ ] Implementing the web service
 
 
-## Contribution & Contact
+## Contribute & Contact
 
-Mist is an open-source project and we sincerely welcome contributions. Apart from Mist, we are broadly interested in the ethics, copyright, trustworth, and privacy concerns of new-generation generative AI. If you have good ideas on these topics, feel free to contact us through our e-mail: [mist202304@gmail.com](mist202304@gmail.com). 
+Mist is an open-source project and we sincerely welcome contributions. Apart from Mist, we are broadly interested in the ethics, copyright, and trustworthy concerns of new-generation AIGC. If you have good ideas on these topics, feel free to contact us through our e-mail: [mist202304@gmail.com](mist202304@gmail.com). 
 
 
 ## A Glimpse to Methodology
