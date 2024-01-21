@@ -7,10 +7,10 @@
 
 
 [![project page](https://img.shields.io/badge/homepage-mist--project.io-blue.svg)](https://mist-project.github.io/index_en.html)
-<!-- [![arXiv](https://img.shields.io/badge/arXiv-2310.04687-red.svg)](https://arxiv.org/abs/2310.04687) -->
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1k5tLNsWTTAkOlkl5d9llf93bJ6csvMuZ?usp=sharing)
 [![One-click Package](https://img.shields.io/badge/-Google_Drive-1A73E8.svg?style=flat&logo=Google-Drive&logoColor=white)](https://drive.google.com/drive/folders/1vg8oK2BUOla5adaJcFYx5QMq0-MoP8kk?usp=drive_link)
 
+<!-- [![arXiv](https://img.shields.io/badge/arXiv-2310.04687-red.svg)](https://arxiv.org/abs/2310.04687) -->
 <!-- 
 [![document](https://img.shields.io/badge/document-passing-light_green.svg)](https://arxiv.org/abs/2310.04687)
 -->
@@ -50,6 +50,7 @@
 
 
 ## What is Mist
+
 Mist is a powerful image preprocessing tool designed for the purpose of protecting the style and content of
 images from being mimicked by state-of-the-art AI-for-Art applications. By adding watermarks to the images, Mist renders them unrecognizable and inmitable for the
 models employed by AI-for-Art applications. Attempts by AI-for-Art applications to mimic these Misted images
@@ -77,14 +78,19 @@ will be ineffective, and the output image of such mimicry will be scrambled and 
 
 We provide two approaches for you to deploy Mist-v2:
 
-- **Free version for local deployment**: If you have a Nvidia GPU with more than 6GB VRAM, you can download our free version pack
-(i.e. no need for installation, runnable after downloading) from [Google Drive](https://drive.google.com/drive/folders/1vg8oK2BUOla5adaJcFYx5QMq0-MoP8kk?usp=drive_link). This is the safest and most flexible way to deploy and run Mist-v2.
+- **Free version for local deployment**: If your system is Windows and it has an Nvidia GPU with more than 6GB VRAM, you can download our free version pack (i.e. no need for installation, runnable after downloading) from [Google Drive](https://drive.google.com/drive/folders/1vg8oK2BUOla5adaJcFYx5QMq0-MoP8kk?usp=drive_link). This is the safest and most flexible way to deploy and run Mist-v2.
+We provide a [guideline](docs/Handbook-Free-version.md) about how to deploy and run.
 
-- **Colab Notebook**: If you does not own compatible Nvidia GPUs, you can run Mist with our [Colab Notebook](https://colab.research.google.com/drive/1k5tLNsWTTAkOlkl5d9llf93bJ6csvMuZ?usp=sharing) on free GPU resources provided by Google (Thank you Google). The Notebook is self-instructed. Note that you cannot Mist too many images (e.g. 100 images) once with Colab because Google limits single-time GPU usage to about 12 hours. You can Mist them separately on several different days.
+- **Colab Notebook**: If your system is MacOS or you do not own proper Nvidia GPUs, you can run Mist with our [Colab Notebook](https://colab.research.google.com/drive/1k5tLNsWTTAkOlkl5d9llf93bJ6csvMuZ?usp=sharing) on free GPU resources provided by Google (Thank you Google). The Notebook is **self-instructed**. 
 
-Both approaches provide a Graphic User Interface (GUI) with the help of [Gradio](https://www.gradio.app/). We also write down a [guideline](docs/GUI.md) for using our GUI.
+### For developers
 
-### Environment
+If you want to build Mist-v2 from source code, we also provide the instruction as follows:
+
+<details><summary> (click-to-expand)  
+ </summary>
+
+#### Environment
 
 **Preliminaries:** To run this repository, please have [Anaconda](https://pytorch.org/) installed in your work station. The GPU version of Mist requires a NVIDIA GPU in [Ampere](https://en.wikipedia.org/wiki/Ampere_(microarchitecture)) or more advanced architecture with more than 6GB VRAM. You can also try the CPU version 
 in a moderate running speed.
@@ -104,7 +110,7 @@ conda activate mist-v2
 pip install -r requirements.txt
 ```
 
-### Usage
+#### Usage
 
 Run Mist V2 in the default setup on GPU:
 ```bash
@@ -116,9 +122,7 @@ Run Mist V2 in the default setup on CPU:
 accelerate launch attacks/mist.py --instance_data_dir $INSTANCE_DIR --output_dir $OUTPUT_DIR --class_data_dir $CLASS_DATA_DIR --instance_prompt $PROMPT --class_prompt $CLASS_PROMPT --mixed_precision bf16
 ```
 
-<details><summary> **(click-to-expand)** Detailed demonstration of the parameters:  
- </summary>
-
+ Detailed demonstration of the parameters:
 
 | Parameter       | Explanation                                                                                |
 | --------------- | ------------------------------------------------------------------------------------------ |
@@ -133,17 +137,16 @@ Here is a case command to run Mist V2 on GPU:
 ```bash
 accelerate launch attacks/mist.py --cuda --low_vram_mode --instance_data_dir data/training --output_dir output/ --class_data_dir data/class --instance_prompt "a photo of a misted person, high quality, masterpiece" --class_prompt "a photo of a person, high quality, masterpiece" --mixed_precision bf16
 ```
-</details>
 
-We also provide a WebUI with the help of [Gradio](https://www.gradio.app/). To boost the WebUI, run:
+The aforementioned GUI can be also booted by running:
 
 ```bash
 python mist-webui.py
 ```
 
-### Evaluation
+#### Evaluation
 
-<details><summary> (click-to-expand) This repo provides a simple pipeline to evaluate the output adversarial examples. </summary>
+This repo provides a simple pipeline to evaluate the output adversarial examples. 
 
 Basically, this pipeline trains a LoRA on the adversarial examples and samples images with the LoRA. 
 Note that our adversarial examples may induce LoRA to output images with NSFW contents 
@@ -181,11 +184,19 @@ LORA_OUTPUT_DIR = [The value of $LORA_OUTPUT_DIR]
 Finally, run the second block to see the output and evaluate the performance of Mist.
 </details>
 
+## TODO
+
+- [x] Mist-v2 release (12/15/2023)
+- [x] Mist-v2 free version (1/13/2024)
+- [x] Mist-v2 Colab Notebook (1/18/2024)
+- [ ] Mist-v2 WebUI
+  - [ ] Appling for free GPU resources
+  - [ ] Implementing the web service
 
 
 ## A Glimpse to Methodology
 
-Mist V2 works by adversarially attacking generative diffusion models. Basically, the attacking is an optimization over the following objective:
+Our paper is still in progress so that we provide a glimpse to our methodology here. Mist V2 works by adversarially attacking generative diffusion models. Basically, the attacking is an optimization over the following objective:
 
 $$ \underset{x'}{min} \mathbb{E} {(z_0', \epsilon,t)}  \Vert \epsilon_\theta(z'_t(z'_0,\epsilon),t)-z_0^T\Vert^2_2, \Vert x'-x\Vert\leq\zeta$$
 
@@ -213,7 +224,7 @@ Our paper is still in working. We are trying to reveal the mechanism behind our 
 
 ## License
 
-This project is licensed under the Apache-2.0 license. Additionally, we forbid any unauthorized commercial use. 
+This project is licensed under the Apache-2.0 license. Additionally, we forbid any unauthorized commercial use. Mist series will be permanently free and open-sourced. Currently, we do not cooperate with any person or organization for commercial purpose.
 
  
 ## Citation
