@@ -612,6 +612,8 @@ def pgd_attack(
                     loss = - F.mse_loss(model_pred, target_tensor)
                     # fused mode
                     if args.mode == 'fused':
+                        loss = -torch.sum(model_pred.float() * target.float())
+                        
                         latent_attack = LatentAttack()
                         loss = loss - 1e2 * latent_attack(latents, target_tensor=target_tensor)            
 
