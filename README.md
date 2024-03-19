@@ -6,7 +6,7 @@
 </p>
 
 
-[![project page](https://img.shields.io/badge/homepage-mist--project.io-blue.svg)](https://mist-project.github.io/index_en.html)
+[![project page](https://img.shields.io/badge/homepage-psyker--team.io-blue.svg)](https://psyker-team.github.io/index_en.html)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1k5tLNsWTTAkOlkl5d9llf93bJ6csvMuZ?usp=sharing)
 [![One-click Package](https://img.shields.io/badge/-Google_Drive-1A73E8.svg?style=flat&logo=Google-Drive&logoColor=white)](https://drive.google.com/drive/folders/1vg8oK2BUOla5adaJcFYx5QMq0-MoP8kk?usp=drive_link)
 
