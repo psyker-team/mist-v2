@@ -872,9 +872,13 @@ def main(args):
             img_names = []
             for filename in os.listdir(args.instance_data_dir):
                 if filename.lower().endswith(".png") or filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
+                    # change the suffix to png
+                    filename = filename.split('.')[0] + '.png'
                     img_names.append(str(filename))
             for img_pixel, ori_img_pixel, img_name, img_size in zip(noised_imgs, origin_imgs, img_names, data_sizes):
+                
                 save_path = os.path.join(save_folder, f"{i+1}_noise_{img_name}")
+                
                 if not args.resize:
                     Image.fromarray(
                         (img_pixel * 127.5 + 128).clamp(0, 255).to(torch.uint8).permute(1, 2, 0).numpy()

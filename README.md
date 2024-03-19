@@ -233,8 +233,15 @@ This project is licensed under the Apache-2.0 license. Additionally, we forbid a
  
 ## Citation
 
-Our paper is still in progress. If you find this repo useful, please keep an eye to our updates. We will release the paper as it is available for public release.
-
+If you find this repo useful, we kindly suggest you to cite our paper.
+```
+@article{zheng2023understanding,
+  title={Understanding and Improving Adversarial Attacks on Latent Diffusion Model},
+  author={Zheng, Boyang and Liang, Chumeng and Wu, Xiaoyu and Liu, Yan},
+  journal={arXiv preprint arXiv:2310.04687},
+  year={2023}
+}
+```
 Additionally, Mist-v2 benefits from the following papers. Their ideas and results inspire us to dive into the mechanism why adversarial attacks work on latent diffusion models. We kindly suggest you to cite them if possible. 
 
 ```
