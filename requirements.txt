@@ -1,9 +1,9 @@
-torch==2.1.0
-torchvision==0.16.0
-diffusers==0.15.0
-transformers==4.26.0
-datasets==2.10.1
-accelerate==0.22.0
+torch
+torchvision
+diffusers
+transformers
+datasets
+accelerate
 gradio
 ftfy
 tensorboard
@@ -20,4 +20,4 @@ cache
 xformers
 colorama
 torchmetrics
---extra-index-url https://download.pytorch.org/whl/cu118
+--extra-index-url https://download.pytorch.org/whl/cu121
