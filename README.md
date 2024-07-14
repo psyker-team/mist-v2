@@ -48,6 +48,7 @@
 
 **2022/12/11**: Mist V2 released.  -->
 
+**(Notice!!!) Updated Statement**: Apply this noise. Mist-v2 may only raise the cost of a motivated and professional attacker and help against someone who’s not really trying or not an expert. It is not a perfect solution but would be certainly better than nothing.
 
 ## What is Mist
 
