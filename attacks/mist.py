@@ -851,9 +851,6 @@ def main(args):
             weight_dtype,
         )
         
-        for model in f:
-            if model != None:
-                model.to('cpu')
         
         if args.cuda:
             gc.collect()
