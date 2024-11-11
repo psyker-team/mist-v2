@@ -1,9 +1,9 @@
 torch==2.0.1
 torchvision
-diffusers==0.15.0
+diffusers
 transformers
-datasets==2.10.1
-accelerate==0.22.0
+datasets=
+accelerate
 gradio
 ftfy
 tensorboard
