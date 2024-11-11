@@ -6,6 +6,7 @@ logs/
 *.jpg
 *.png
 !data/MIST.png
+!data/nips.png
 !/MIST_logo.png
 *.zip
 __pycache__/
