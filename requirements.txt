@@ -2,7 +2,7 @@ torch==2.0.1
 torchvision
 diffusers
 transformers
-datasets=
+datasets
 accelerate
 gradio
 ftfy
