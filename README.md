@@ -197,7 +197,7 @@ Finally, run the second block to see the output and evaluate the performance of 
 
 ## Contribute & Contact
 
-Mist is an open-source project and we sincerely welcome contributions. Apart from Mist, we are broadly interested in the ethics, copyright, and trustworthy concerns of new-generation AIGC. If you have good ideas on these topics, feel free to contact us through our e-mail: [mist202304@gmail.com](mist202304@gmail.com). 
+Mist is a project with publicly available source code and we sincerely welcome contributions. Apart from Mist, we are broadly interested in the ethics, copyright, and trustworthy concerns of new-generation AIGC. If you have good ideas on these topics, feel free to contact us through our e-mail: [mist202304@gmail.com](mist202304@gmail.com). 
 
 
 ## A Glimpse to Methodology
@@ -229,7 +229,7 @@ the pattern learned by finetuning. The finetuned model will also add the fixed b
 
 ## License
 
-This project is licensed under the Apache-2.0 license. Additionally, we forbid any unauthorized commercial use. Mist series will be permanently free and open-sourced. Currently, we do not cooperate with any person or organization for commercial purpose.
+This project is licensed under the Apache-2.0 license. Additionally, we forbid any unauthorized commercial use. Mist series will be permanently free, with its source code always accessible to the public. Currently, we do not cooperate with any person or organization for commercial purpose.
 
  
 ## Citation
